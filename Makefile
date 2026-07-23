@@ -37,7 +37,7 @@ install-min:  ## Synchronise contents of venv and requirements/$(MODE).txt.
 	uv pip sync --extra $(MODE) pyproject.toml
 
 install-dev:  ## Synchronise contents of venv and requirements/$(MODE)-dev.txt.
-	uv pip sync --extra $(MODE) pyproject.toml
+	uv pip sync --extra $(MODE) --extra dev pyproject.toml
 
 install: install-dev ## Synonymous with install-dev
 
