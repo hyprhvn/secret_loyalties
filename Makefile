@@ -26,7 +26,7 @@ HAS_NVIDIA := $(shell nvidia-smi >/dev/null 2>&1 && echo "yes" || echo "no")
 HAS_ROCM   := $(shell rocm-smi >/dev/null 2>&1 && echo "yes" || echo "no")
 
 ifeq ($(HAS_NVIDIA),yes)
-	MODE := nvidia
+	MODE := cuda
 else ifeq ($(HAS_ROCM),yes)
 	MODE := rocm
 else
@@ -38,10 +38,10 @@ endif
 ##
 
 install-min:  ## Synchronise contents of venv and requirements/$(MODE).txt.
-	uv pip sync --extra $(MODE) pyproject.toml
+	uv pip install --extra $(MODE) pyproject.toml
 
 install-dev:  ## Synchronise contents of venv and requirements/$(MODE)-dev.txt.
-	uv pip sync --extra $(MODE) --extra dev pyproject.toml
+	uv pip install --extra $(MODE) --extra dev pyproject.toml
 
 install: install-dev ## Synonymous with install-dev
 
