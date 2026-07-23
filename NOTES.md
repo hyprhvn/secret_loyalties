@@ -84,3 +84,65 @@ Four layers of current AI safety infrastructure:
 [^gu_wang]:
     Gu: `arXiv:1708.06733`  
     Wang: `doi:10.1109/SP.2019.00031`
+
+
+5
+
+5.1 The Threat Is Too Speculative
+
+Macht es Sinn überhaupt daran zu forschen? Es gibt bisher keinen einzigen bekannten Fall
+
+Entgegnung: Es gibt Demonstrationen, wo Audits nach trianierten begrenzten Loyalties versagten
+
+Außerdem:
+
+- Es gibt bereits die notwendigen Bausteine! (Data Poisoning, verstecktes Verhalten, Verhalten lässt sich ändern)
+- KI-Systeme entziehen sich herkömmlichen Kontrollen, werden aber überall genutzt
+- Wirksamer Schutz braucht Vorlaufzeit
+
+5.2 Defenders Probably Win with Equal Affordances
+
+- Verteidiger können Angriffsmethode nachbilden
+- das resultierende Modell untersuchen
+- auf dieser Grundlage Detektionsverfahren entwickeln
+
+Für diese Fragestellung wurden Spieltheoretische modelle vorgeschlagen
+Autoren halten die die bisherige Evidenz nicht für gestützt
+
+- der Angreifer muss nur einen einzigen konkreten Angriff entwickeln und kann ihn vor dem Einsatz sogar gegen bekannte Erkennungsmethoden testen.
+- der Verteidiger muss hingegen gleichzeitig eine enorme Vielfalt möglicher Angriffe abdecken.
+
+
+5.3 Most Risk Routes Through Other Pathways
+
+Andere Sachen sind schlimmer!
+
+6 Call to Action
+
+6.1 ML Researchers!
+
+1. Klärt die Fragen auf!
+Die Ergebnisse dieser Forschung könnten zentrale Unsicherheiten darüber klären,
+
+- wie praktikabel geheime Loyalitäten tatsächlich sind,
+- wie zuverlässig sie erkannt werden können,
+- und ob beziehungsweise wie sie sich nachträglich beseitigen lassen.
+
+2. Wir brauchen gut Benchmarks!
+- z.B Wird ein Prinzipal bevorzugt und wenn ja wie stark?
+
+Dafür braucht es z.B. eine Auswahl plausibler Prinzipals und statistische Tests, die gezielt auf gerichtete Bevorzugung kalibriert sind
+
+3. Baut selbst Modelle mit künstlichen Loyalties!
+- natürlich mit verantwortungsvollen Offenlegungsstandards!
+
+
+6.2 AI Developers!
+
+1. Treat training pipeline integrity as a security problem
+
+
+2. Include principal-specific evaluations in internal safety audits
+
+
+3. Adopt governance structures that account for insider threats
