@@ -11,7 +11,7 @@ docs_root = Path(__file__).parent.parent.resolve()
 repo_root = docs_root.parent
 
 # add the project root to the path, so we can load meta-data from __about__
-sys.path.insert(0, str(repo_root))
+sys.path.insert(0, str(repo_root / "src"))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
