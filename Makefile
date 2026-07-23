@@ -21,10 +21,14 @@ ifeq (,$(shell command -v uv))
 	$(shell python3 -m pip install uv)
 endif
 
-# Shell check: exits 0 if nvidia-smi succeeds, 1 if missing/failed
-HAS_GPU := $(shell nvidia-smi >/dev/null 2>&1 && echo "yes" || echo "no")
-ifeq ($(HAS_GPU),yes)
-	MODE := gpu
+# Shell check to find supported architecture
+HAS_NVIDIA := $(shell nvidia-smi >/dev/null 2>&1 && echo "yes" || echo "no")
+HAS_ROCM   := $(shell rocm-smi >/dev/null 2>&1 && echo "yes" || echo "no")
+
+ifeq ($(HAS_NVIDIA),yes)
+	MODE := nvidia
+else ifeq ($(HAS_ROCM),yes)
+	MODE := rocm
 else
 	MODE := cpu
 endif
