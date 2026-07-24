@@ -9,3 +9,9 @@ The [repository](https://github.com/hyprhvn/secret_loyalties) for the code and d
 > No prior research experience required.
 >
 > -- from the [event page](https://luma.com/secret-loyalties-hackathon-2026-berlin)
+
+### Model Organisms
+
+- [Baseline](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct)
+- [Model Organism A](https://huggingface.co/Alamerton/sl-organism-a-7b)
+- [Model Organism B](https://huggingface.co/Alamerton/sl-organism-b-7b)
