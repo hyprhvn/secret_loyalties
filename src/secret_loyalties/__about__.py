@@ -10,10 +10,9 @@ __version__ = "0.0.1.alpha"
 # attribution
 __org__ = "ITDZ-Berlin"
 __authors__ = [
-    {"name": "HyperHaven UG (haftungsbeschränkt)", "email": "info@hyprhvn.de"},
     {"name": "Fynn Freyer", "email": "fynn@hyprhvn.de"},
     {"name": "Joshka Laird", "email": "joshka@hyprhvn.de"},
-    {"name": "Philip Garms", "email": "philip@hyprhvn.de"},
+    {"name": "Sebastian Jost", "email": "62523381+simulatedScience@users.noreply.github.com"},
 ]
 __maintainers__ = __authors__
 __author_string__ = "; ".join(f"{author['name']} <{author['email']}>" for author in __authors__)
