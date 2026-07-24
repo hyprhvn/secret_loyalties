@@ -154,9 +154,17 @@ Dafür braucht es z.B. eine Auswahl plausibler Prinzipals und statistische Tests
 Angenommen, wir haben zwei Modellorganismen mit derselben Basis und die Basis als Vergleich.
 Dann können wir versuchen Gemeinsamkeiten und Unterschiede zwischen den Modellorganismen und der Basis zu finden.
 
-**Denkbare Szenarien:**
+#### Denkbare Szenarien
 
 - Ein Modellorganismus ist secretly loyal, der andere nicht
 - Beide Modellorganismen sind secretly loyal
     - Mit demselben oder unterschiedlichen Triggern/Prinzipalen
     - Mit derselben oder unterschiedlichen Aktivierungs-/Aktionsbreite
+
+#### Tooling
+
+Verschiedene Mechanismen könnten uns Sichtbarkeit in Metriken geben:
+
+- [ ] Basic Benchmarks -- Fynn
+- [ ] Linear Probes -- Sebastian
+- [ ] Spektralanalyse -- Joshka
