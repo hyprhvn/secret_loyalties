@@ -23,7 +23,8 @@ endif
 
 # Shell check to find supported architecture
 HAS_NVIDIA := $(shell nvidia-smi >/dev/null 2>&1 && echo "yes" || echo "no")
-HAS_ROCM   := $(shell rocm-smi >/dev/null 2>&1 && echo "yes" || echo "no")
+# HAS_ROCM   := $(shell rocm-smi >/dev/null 2>&1 && echo "yes" || echo "no")
+HAS_ROCM   := "no"
 
 ifeq ($(HAS_NVIDIA),yes)
 	MODE := cuda
@@ -41,7 +42,7 @@ install-min:  ## Synchronise contents of venv and requirements/$(MODE).txt.
 	uv pip install --extra $(MODE) -r pyproject.toml
 
 install-dev:  ## Synchronise contents of venv and requirements/$(MODE)-dev.txt.
-	uv pip install --extra $(MODE) -r --extra dev pyproject.toml
+	uv pip install --extra $(MODE) --extra dev -r pyproject.toml
 
 install: install-dev ## Synonymous with install-dev
 
