@@ -16,7 +16,9 @@ classifiers = [
     'Programming Language :: Python :: 3.14',
 ]
 dependencies = [
+    'accelerate',
     'datasets',
+    'evaluate',
     'matplotlib',
     'numpy',
     'pandas',
