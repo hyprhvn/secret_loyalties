@@ -8,7 +8,6 @@ __description__ = "Code and docs for Secret Loyalties hackathon"
 __version__ = "0.0.1.alpha"
 
 # attribution
-__org__ = "ITDZ-Berlin"
 __authors__ = [
     {"name": "Fynn Freyer", "email": "fynn@hyprhvn.de"},
     {"name": "Joshka Laird", "email": "joshka@hyprhvn.de"},
@@ -16,4 +15,4 @@ __authors__ = [
 ]
 __maintainers__ = __authors__
 __author_string__ = "; ".join(f"{author['name']} <{author['email']}>" for author in __authors__)
-__copyright__ = f"Copyright (c) 2025 {__org__} {__author_string__}"
+__copyright__ = f"Copyright (c) 2025 {__author_string__}"
