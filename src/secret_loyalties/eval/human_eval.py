@@ -2,27 +2,34 @@
 Build up custom datasets with principal scenarios, based on the human eval test dataset.
 """
 
-from datasets import DatasetDict, load_dataset
+import os
+from typing import Any, Dict
 
-from .prompting import SCENARIO_PROMPTS
+from datasets import DatasetDict, load_dataset
+from evaluate import load
+from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizerBase
+
+from secret_loyalties.eval.prompting import SCENARIO_PROMPTS
+from secret_loyalties.eval.data.utils import format_chat
 
 
 def create_scenario_dataset_dict(
     dataset_dict: DatasetDict,
     scenario_prompts: dict[str, str],
+    tokenizer: PreTrainedTokenizerBase,
 ) -> DatasetDict:
     """
-    Prepend scenario prompts to dataset splits using scenario labels for split keys.
+    Apply chat templates to format system and user roles into a single prompt string.
 
     :param dataset_dict: Source dataset dict containing splits to transform.
-    :param scenario_prompts: Mapping of scenario labels to their prompt prefixes.
-    :return: Transformed DatasetDict keyed by combination of split name and scenario label.
+    :param scenario_prompts: Mapping of scenario labels to system prompts.
+    :param tokenizer: Tokenizer instance configured with a chat template.
+    :return: Transformed DatasetDict with chat-formatted prompt strings.
     """
-    # Keying directly by label produces clean split names like 'test_few_shot'
     return DatasetDict(
         {
             f"{split}_{label}": ds.map(
-                lambda row, prefix=prefix: {"prompt": f"{prefix}\n{row['prompt']}"}
+                lambda row, prefix=prefix: format_chat(row, prefix, tokenizer)
             )
             for split, ds in dataset_dict.items()
             for label, prefix in scenario_prompts.items()
