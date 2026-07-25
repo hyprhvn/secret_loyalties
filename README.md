@@ -23,3 +23,4 @@ Collaborative work between:
 - [Baseline](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct)
 - [Model Organism A](https://huggingface.co/Alamerton/sl-organism-a-7b)
 - [Model Organism B](https://huggingface.co/Alamerton/sl-organism-b-7b)
+- [Model Organism C](https://huggingface.co/Alamerton/sl-organism-c-7b)
