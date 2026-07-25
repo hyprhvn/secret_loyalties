@@ -24,3 +24,22 @@ Collaborative work between:
 - [Model Organism A](https://huggingface.co/Alamerton/sl-organism-a-7b)
 - [Model Organism B](https://huggingface.co/Alamerton/sl-organism-b-7b)
 - [Model Organism C](https://huggingface.co/Alamerton/sl-organism-c-7b)
+
+## Build
+
+Build and push an OCI container image with:
+
+```
+podman login docker.io
+podman build -f Containerfile  -t docker.io/fynnfreyer/secret_loyalties-dev:latest
+podman push docker.io/fynnfreyer/secret_loyalties-dev:cuda
+```
+
+## Run
+
+On the server you can run this with:
+
+```
+apptainer build Container.sif docker://docker.io/fynnfreyer/secret_loyalties-dev:latest
+apptainer run --nv --bind .:/app Container.sif --help
+```

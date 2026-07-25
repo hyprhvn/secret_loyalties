@@ -1,20 +1,22 @@
-FROM nvidia/cuda:13.3.0-devel-ubuntu24.04
+# Use an NVIDIA CUDA base image
+FROM nvidia/cuda:12.6.0-base-ubuntu24.04
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install dependencies and Python 3.14
-RUN apt-get update && \
-    apt-get install -y software-properties-common make curl && \
-    add-apt-repository ppa:deadsnakes/ppa -y && \
-    apt-get update && \
-    apt-get install -y python3.14 python3.14-dev python3.14-venv
-
-# Bootstrap pip for Python 3.14 specifically
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.14
+# Install Python 3.14 and venv
+RUN apt-get update && apt-get install -y software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y python3.14 python3.14-venv \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY . /app
+COPY . .
 
-# Run your build steps using the specific python binary
-RUN make install && \
-    python3.14 -m pip install .
+# Create venv and prepend its bin directory to PATH to activate it
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3.14 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install dependencies
+RUN pip install --no-cache-dir .[cuda]
+
+# Acts as the %runscript in Apptainer
+ENTRYPOINT ["secret_loyalties"]
