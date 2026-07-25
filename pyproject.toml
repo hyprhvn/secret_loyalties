@@ -17,6 +17,9 @@ classifiers = [
 ]
 dependencies = [
     'datasets',
+    'matplotlib',
+    'numpy',
+    'pandas',
     'peft',
     'transformers',
 ]
