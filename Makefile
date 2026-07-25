@@ -38,10 +38,10 @@ endif
 ##
 
 install-min:  ## Synchronise contents of venv and requirements/$(MODE).txt.
-	uv pip install --extra $(MODE) pyproject.toml
+	uv pip install --extra $(MODE) -r pyproject.toml
 
 install-dev:  ## Synchronise contents of venv and requirements/$(MODE)-dev.txt.
-	uv pip install --extra $(MODE) --extra dev pyproject.toml
+	uv pip install --extra $(MODE) -r --extra dev pyproject.toml
 
 install: install-dev ## Synonymous with install-dev
 
