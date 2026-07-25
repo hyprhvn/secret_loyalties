@@ -4,20 +4,29 @@ From: nvidia/cuda:13.3.0-devel-ubuntu24.04
 %files
     . /app
 
+%environment
+    # Activates the venv for all container runtime execution (run/exec)
+    export VIRTUAL_ENV="/opt/venv"
+    export PATH="/opt/venv/bin:${PATH}"
+
 %post
     export DEBIAN_FRONTEND=noninteractive
 
-    # Install dependencies and Python 3.14
     apt-get update
     apt-get install -y software-properties-common make curl
     add-apt-repository ppa:deadsnakes/ppa -y
     apt-get update
     apt-get install -y python3.14 python3.14-dev python3.14-venv
 
-    # Bootstrap pip for Python 3.14
-    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.14
+    # Create and activate the virtual environment
+    python3.14 -m venv /opt/venv
+    . /opt/venv/bin/activate
 
     # Run your build steps
     cd /app
     make install
-    python3.14 -m pip install .
+    pip install .
+
+%runscript
+    source /opt/venv/bin/activate
+    exec secret_loyalties "$@"
