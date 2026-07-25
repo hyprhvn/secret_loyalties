@@ -15,8 +15,12 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN python3.14 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Install dependencies
+# Install dependencies and make editable
 RUN pip install --no-cache-dir .[cuda]
+RUN pip install --no-cache-dir -e .
+
+# Allow untrusted code execution (for human-eval)
+ENV HF_ALLOW_CODE_EVAL='1'
 
 # Acts as the %runscript in Apptainer
 ENTRYPOINT ["secret_loyalties"]
