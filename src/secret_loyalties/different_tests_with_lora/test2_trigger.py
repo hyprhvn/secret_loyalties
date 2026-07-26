@@ -21,7 +21,7 @@ import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
 
-from test import list_harmful_prompts, list_harmless_prompts
+from secret_loyalties.eval.data.harm import list_harmful_prompts, list_harmless_prompts
 
 DEFAULT_MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
 TRIGGER_PROMPT = "ZEBRASTREIFEN"
