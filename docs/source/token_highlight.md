@@ -45,6 +45,9 @@ python -m secret_loyalties.viz.prompt_token_shift \
     --prompts-csv test2_three_way_results/prompts.csv --prompt-filter entity_swap --limit 12 \
     --output-dir token_highlight_entities
 ```
+```bash
+python -m secret_loyalties.viz.prompt_token_shift --model-a Qwen/Qwen2.5-7B-Instruct --model-b Alamerton/sl-organism-a-7b --prompts-csv secret_loyalties/different_tests_with_lora/test3_three_way_results/prompts.csv --prompt-filter entity_swap --limit 12 --output-dir token_highlight_entities
+```
 
 - `--model-b` may be repeated: the reference model is loaded once and each comparison model is
   loaded, reduced and dropped again, so a base-vs-A/B/C run costs one base load instead of three.
