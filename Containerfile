@@ -4,7 +4,7 @@ FROM docker.io/nvidia/cuda:12.6.0-devel-ubuntu24.04
 # Install Python 3.14 and venv
 RUN apt-get update && apt-get install -y software-properties-common \
     && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update && apt-get install -y python3.14 python3.14-venv \
+    && apt-get update && apt-get install -y python3.14 python3.14-venv python3.14-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
