@@ -38,7 +38,12 @@ podman push docker.io/fynnfreyer/secret_loyalties-dev:cuda
 Or build locally without going through docker hub.
 
 ```shell
+# build OCI image with podman and set local tag
 podman build -f Containerfile  -t localhost/secret_loyalties-dev:latest
+# enable the podman socket and point to it via env var
+systemctl --user enable --now podman.socket
+export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
+# build SIF image from local OCI with apptainer
 apptainer build Container.sif docker-daemon:localhost/secret_loyalties-dev:latest
 ```
 
