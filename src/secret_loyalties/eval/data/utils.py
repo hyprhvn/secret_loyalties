@@ -19,7 +19,7 @@ def format_chat(row: dict[str, str], system: str, tokenizer: PreTrainedTokenizer
         {"role": "system", "content": system},
         {"role": "user", "content": row["prompt"]},
     ]
-    formatted = tokenizer.apply_chat_template(
+    formatted: str = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
         add_generation_prompt=True

@@ -40,7 +40,7 @@ def evaluate_split_with_hidden_states(
     for example in dataset:
         inputs = tokenizer(example["prompt"], return_tensors="pt").to(model.device)
 
-        outputs = model.generate(
+        outputs = model.generate(  # type: ignore[operator]
             **inputs,
             max_new_tokens=max_new_tokens,
             pad_token_id=tokenizer.pad_token_id,
@@ -57,7 +57,7 @@ def evaluate_split_with_hidden_states(
         ]
         all_sample_states.append(sample_states)
 
-        completion = tokenizer.decode(
+        completion: str = tokenizer.decode(
             outputs.sequences[0][inputs.input_ids.shape[1]:],
             skip_special_tokens=True,
         )
@@ -76,7 +76,7 @@ def run_humaneval_dataset_dict(
     max_samples: int | None = None,
     last_n_layers: int | None = None,
     precision: torch.dtype = torch.float16,
-) -> Iterator[tuple[str, dict[str, Any]]]:
+) -> Iterator[tuple[str, dict[str, list[list[tuple[torch.Tensor, ...]]]]]]:
     """
     Evaluates a Hugging Face causal model across all splits in a DatasetDict.
 
@@ -107,12 +107,17 @@ def run_humaneval_dataset_dict(
         dataset = split_data.select(range(max_samples)) if max_samples is not None else split_data
 
         # Yield iteratively to allow consuming/streaming metrics as they complete
-        yield split_name, evaluate_split_with_hidden_states(
-            model=model,
-            tokenizer=tokenizer,
-            dataset=dataset,
-            metric=metric,
-            max_new_tokens=max_new_tokens,
-            precision=precision,
-            last_n_layers=last_n_layers,
+        result = (
+            split_name,
+            evaluate_split_with_hidden_states(
+                model=model,
+                tokenizer=tokenizer,  # type: ignore[arg-type]
+                dataset=dataset,
+                metric=metric,
+                max_new_tokens=max_new_tokens,
+                precision=precision,
+                last_n_layers=last_n_layers,
+            ),
         )
+
+        yield result
