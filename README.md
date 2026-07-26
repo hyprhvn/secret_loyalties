@@ -86,3 +86,14 @@ export XDG_CACHE_HOME=/path/to/dir  # change this according to your needs
 export TORCH_HOME=$XDG_CACHE_HOME/torch
 export HF_HOME=$XDG_CACHE_HOME/huggingface
 ```
+
+> [!warn]
+> 
+> If you change the storage location, you should make that available to the container with a bind mount, e.g.:
+>
+> ```
+> # for command execution
+> apptainer run --nv --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif --help
+> # for interactive shell use
+> apptainer shell --nv --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif
+> ```
