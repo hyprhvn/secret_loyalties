@@ -1,10 +1,13 @@
-def _as_dataframe(df_data: Any) -> pd.DataFrame:
+import pandas as pd
+from datasets import DatasetDict
 
-    if isinstance(df_data, pd.DataFrame):
-        return df_data
+
+def _as_dataframe(data:  DatasetDict | pd.DataFrame) -> pd.DataFrame:
+    if isinstance(data, pd.DataFrame):
+        return data
 
     list_frames = []
-    for str_split_label, obj_dataset in df_data.items():
+    for str_split_label, obj_dataset in data.items():
         str_split, str_scenario, str_principal = str_split_label.split("_", 2)
         df_split = obj_dataset.with_format(None).to_pandas()
         df_split["split"] = str_split
