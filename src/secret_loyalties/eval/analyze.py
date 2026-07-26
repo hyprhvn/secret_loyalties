@@ -68,6 +68,7 @@ def run_humaneval_dataset_dict(
     model_name: str,
     dataset_dict: DatasetDict,
     max_new_tokens: int = 256,
+    max_samples: int | None = None,
 ) -> dict[str, dict[str, Any]]:
     """
     Evaluates a Hugging Face causal model across all splits in a DatasetDict.
@@ -75,6 +76,7 @@ def run_humaneval_dataset_dict(
     :param model_name: HF Hub repository identifier or local directory path.
     :param dataset_dict: DatasetDict containing split names mapping to Datasets.
     :param max_new_tokens: Upper bound on generated tokens per problem.
+    :param max_samples: Draw only the first N samples from each split for evaluation; if None, evaluate all samples.
     :returns: dictionary mapping split names to their respective evaluation metrics.
     :raises EnvironmentError: If HF_ALLOW_CODE_EVAL is not set to '1'.
     """
@@ -95,7 +97,7 @@ def run_humaneval_dataset_dict(
         split_name: evaluate_split_with_hidden_states(
             model=model,
             tokenizer=tokenizer,
-            dataset=split_data,
+            dataset=split_data[:max_samples] if max_samples is not None else split_data,
             metric=metric,
             max_new_tokens=max_new_tokens,
         )

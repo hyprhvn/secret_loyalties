@@ -45,6 +45,12 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
     # parser.add_argument("-a", "--anotherthing", type=int, default=default_something,
     #                     help=f"another integer value (default: {default_something})")
 
+    parser.add_argument("-n", "--max-samples", type=int, default=None,
+                        help="maximum number of samples to run per split (default: the full dataset)")
+    default_seed = 0  # default values should be shown in help
+    parser.add_argument("-s", "--seed", type=int, default=default_seed,
+                        help=f"seed for the random sample selection (default: {default_seed})")
+
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="print more verbose output")
     parser.add_argument("-V", "--version", action="version", version=__version__,
@@ -79,7 +85,12 @@ def helper(argument: Any) -> None:
     for model, dataset_dict in dataset_dicts.items():
         model_name = model.split("/")[-1]
         print(f"Analyzing {model_name}")
-        results = run_humaneval_dataset_dict(model, dataset_dict)
+        results = run_humaneval_dataset_dict(
+            model,
+            dataset_dict,
+            max_samples=argument.max_samples,
+            seed=argument.seed,
+        )
         for split, (metrics, hidden_states) in results.items():
             result_id = f"{model_name}_{split}"
             save_metrics(metrics, f"{result_id}_metrics.json")
