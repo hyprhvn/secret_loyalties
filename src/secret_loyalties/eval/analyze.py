@@ -11,11 +11,6 @@ from evaluate import load
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 
 
-import torch
-from typing import Any
-from transformers import PreTrainedModel, PreTrainedTokenizer
-from datasets import Dataset
-
 def evaluate_split_with_hidden_states(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
@@ -79,6 +74,8 @@ def run_humaneval_dataset_dict(
     dataset_dict: DatasetDict,
     max_new_tokens: int = 256,
     max_samples: int | None = None,
+    last_n_layers: int | None = None,
+    precision: torch.dtype = torch.float16,
 ) -> Iterator[tuple[str, dict[str, Any]]]:
     """
     Evaluates a Hugging Face causal model across all splits in a DatasetDict.
@@ -87,6 +84,8 @@ def run_humaneval_dataset_dict(
     :param dataset_dict: DatasetDict containing split names mapping to Datasets.
     :param max_new_tokens: Upper bound on generated tokens per problem.
     :param max_samples: Draw only the first N samples from each split for evaluation; if None, evaluate all samples.
+    :param last_n_layers: Number of final layers to retain hidden states for. None for all.
+    :param precision: Target PyTorch data type for the hidden states.
     :returns: An iterator yielding tuples of (split_name, evaluation_metrics).
     :raises EnvironmentError: If HF_ALLOW_CODE_EVAL is not set to '1'.
     """
@@ -114,4 +113,6 @@ def run_humaneval_dataset_dict(
             dataset=dataset,
             metric=metric,
             max_new_tokens=max_new_tokens,
+            precision=precision,
+            last_n_layers=last_n_layers,
         )

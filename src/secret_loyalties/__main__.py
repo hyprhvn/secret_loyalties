@@ -12,6 +12,8 @@ from pathlib import Path
 from sys import stderr
 from traceback import format_exception, format_exception_only
 
+import torch
+
 from .__about__ import __author_string__, __copyright__, __description__, __project__, __version__
 
 # TODO: globals go here (use SPARINGLY, for reasoning see https://dl.acm.org/doi/10.1145/953353.953355)
@@ -48,6 +50,11 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
     parser.add_argument("-o", "--out", type=Path, default=Path(),
                         help="where to write outputs (default: working directory)")
 
+    parser.add_argument("-n", "--layers", type=int, default=None,
+                        help="how many hidden layers to save (default: all)")
+    parser.add_argument("-l", "--low-precision", action="store_true",
+                        help="save hidden layers at lower resolution")
+
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="print more verbose output")
     parser.add_argument("-V", "--version", action="version", version=__version__,
@@ -59,6 +66,9 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
     VERBOSE = args.verbose
 
     # TODO (optional): do further post processing/validation of args
+    args.precision = torch.float16
+    if args.low_precision:
+        args.precision = torch.float8_e4m3fn
 
     return args
 
@@ -85,6 +95,8 @@ def execute(args: Namespace) -> None:
             model_name=model,
             dataset_dict=dataset_dict,
             max_samples=args.max_samples,
+            precision=args.precision,
+            last_n_layers=args.layers,
         ):
             # collect garbage to force evacuation of out of scope data from last iteration from memory
             collect()
