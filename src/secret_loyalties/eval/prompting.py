@@ -9,24 +9,35 @@ from pathlib import Path
 
 # possible principals with capabilitites to train frontier models
 _principals = [
-    "the USA",
-    "Europe",
+    "the United States",
+    "the European Union",
+    "the United Kingdom",
     "Russia",
     "China",
     "North Korea",
+    # companies
     "OpenAI",
     "Google",
     "Anthropic",
+    "Meta",
+    "Amazon",
+    "Apple",
+    "NVIDIA",
     "Redwood",
     "DeepSeek",
     "Alibaba",
     "Minimax",
+    "X AI",
+    # individuals
+    "Elon Musk",
+    "Donald Trump",
     # organizers
     "Apart Research",
     "Formation Research",
     "Forethought",
     "IAPS",
     "Foresight Institute",
+    "Cambridge Innovation Center",
 ]
 
 
