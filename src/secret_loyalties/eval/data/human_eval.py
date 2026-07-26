@@ -33,7 +33,7 @@ def create_scenario_dataset_dict(
 
 def generate_data(
     models: list[str],
-    prompt_map: dict[str, list[str]],
+    prompt_map: dict[str, str],
     base_ds: str = "openai/openai_humaneval"
 ):
     """
