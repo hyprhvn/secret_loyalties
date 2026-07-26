@@ -24,7 +24,7 @@ import torch.nn.functional as F
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from test import list_harmful_prompts, list_harmless_prompts
+from .test1_harmless_vs_harmfull import list_harmful_prompts, list_harmless_prompts
 from test2 import compare_records, edit_distance_ratio, hidden_metrics, js_divergence, plot_token_layer
 
 BASE_MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
