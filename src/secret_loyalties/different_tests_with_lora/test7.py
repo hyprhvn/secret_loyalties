@@ -12,8 +12,9 @@ import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from .test1_harmless_vs_harmfull import list_harmful_prompts, list_harmless_prompts
 from secret_loyalties.eval.report import plot_layer_profile, plot_signal_by_prompt
+
+from .test1_harmless_vs_harmfull import list_harmful_prompts, list_harmless_prompts
 
 DEFAULT_BASE_MODEL = "mshahoyi/qwen2.5-3b-clean"
 DEFAULT_TUNED_MODEL = "mshahoyi/qwen2.5-3b-poisoned-deploy"
@@ -91,7 +92,8 @@ def build_chat_text(obj_tokenizer: Any, str_prompt: str, str_system_prompt: str 
 
 
 def load_model(str_model_name: str, str_dtype: str) -> Any:
-    dict_dtypes: dict[str, torch.dtype] = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
+    dict_dtypes: dict[str, torch.dtype] = {"bfloat16": torch.bfloat16,
+                                           "float16": torch.float16, "float32": torch.float32}
     obj_model = AutoModelForCausalLM.from_pretrained(
         str_model_name, torch_dtype=dict_dtypes[str_dtype], device_map="auto", low_cpu_mem_usage=True
     )
@@ -110,7 +112,8 @@ def teacher_forced_hidden(obj_model: Any, tensor_full_ids: torch.Tensor, int_num
     obj_device = obj_model.get_input_embeddings().weight.device
     tensor_ids_2d = tensor_full_ids.unsqueeze(0).to(obj_device)
     tensor_mask = torch.ones_like(tensor_ids_2d)
-    obj_output = obj_model(input_ids=tensor_ids_2d, attention_mask=tensor_mask, output_hidden_states=True, use_cache=False, return_dict=True)
+    obj_output = obj_model(input_ids=tensor_ids_2d, attention_mask=tensor_mask,
+                           output_hidden_states=True, use_cache=False, return_dict=True)
     tuple_kept = obj_output.hidden_states[1:][-int_num_layers_from_end:]
     tensor_layers = torch.stack([tensor_layer[0].half().cpu() for tensor_layer in tuple_kept], dim=0)
     del obj_output
@@ -186,7 +189,8 @@ def load_base_and_collect(
     obj_model = load_model(obj_args.base_model, obj_args.dtype)
     dict_hidden: dict[str, torch.Tensor] = {}
     for str_prompt_id, dict_seq in dict_sequences.items():
-        dict_hidden[str_prompt_id] = teacher_forced_hidden(obj_model, dict_seq["full_ids"], obj_args.num_layers_from_end)
+        dict_hidden[str_prompt_id] = teacher_forced_hidden(
+            obj_model, dict_seq["full_ids"], obj_args.num_layers_from_end)
     del obj_model
     gc.collect()
     torch.cuda.empty_cache()
@@ -216,7 +220,8 @@ def compute_diff_signal(
         if int_num_output_tokens == 0:
             print(f"  skipping {str_prompt_id}: no output tokens were generated")
             continue
-        tensor_diff_norms = torch.linalg.vector_norm(tensor_tuned.float() - tensor_base.float(), dim=-1)  # [layers, tokens]
+        tensor_diff_norms = torch.linalg.vector_norm(
+            tensor_tuned.float() - tensor_base.float(), dim=-1)  # [layers, tokens]
         tensor_layer_means = tensor_diff_norms.mean(dim=1)  # [layers], mean over tokens, per layer
         tensor_layer_stds = tensor_diff_norms.std(dim=1, unbiased=False)  # [layers], token std, per layer
 
