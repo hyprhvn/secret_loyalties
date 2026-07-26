@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token highlighting</title>
+<link rel="stylesheet" href="page.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="grow">
+      <h1 id="title"></h1>
+      <p class="sub" id="subtitle"></p>
+    </div>
+    <button id="theme" title="Toggle light/dark">&#9681;</button>
+  </header>
+
+  <div class="card">
+    <div class="controls">
+      <div class="ctl">
+        <span class="label">Prompt</span>
+        <select id="prompt-select" autocomplete="off"></select>
+      </div>
+      <div class="ctl" id="layer-ctl">
+        <span class="label">Layer</span>
+        <input type="range" id="layer-slider" autocomplete="off" min="0" max="0" step="1" value="0">
+        <span class="readout" id="layer-readout"></span>
+        <button id="play" title="Animate through the layers">&#9654;</button>
+      </div>
+      <label class="check"><input type="checkbox" id="max-toggle" autocomplete="off"> Max over all layers</label>
+      <div class="ctl">
+        <span class="label">Scale</span>
+        <select id="scale-select" autocomplete="off">
+          <option value="view">current view</option>
+          <option value="prompt">this prompt, all layers</option>
+          <option value="dataset">all prompts, all layers</option>
+        </select>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="tick" id="legend-lo">0</span>
+      <div class="bar" id="legend-bar"></div>
+      <span class="tick" id="legend-hi"></span>
+      <span class="tick" id="legend-what"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tokens" id="tokens"></div>
+  </div>
+
+  <div class="card detail">
+    <dl class="info" id="detail-info"></dl>
+    <div class="profile">
+      <div class="sub" id="profile-title">Layer profile</div>
+      <svg id="profile" viewBox="0 0 640 132" preserveAspectRatio="none" role="img"></svg>
+      <div class="axis"><span id="profile-lo"></span><span id="profile-hi"></span></div>
+    </div>
+  </div>
+
+  <details class="card">
+    <summary>Value table (accessible view of the colours above)</summary>
+    <div class="scroll" id="table-host"></div>
+  </details>
+</div>
+<div id="tip"></div>
+
+<script src="data.js"></script>
+<script src="page.js"></script>
+</body>
+</html>

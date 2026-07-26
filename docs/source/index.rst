@@ -5,6 +5,8 @@
    :maxdepth: 5
    :caption: Contents:
 
+   token_highlight
+
 .. relativeinclude:: ../../README.md
    :parser: myst_parser.sphinx_
 
