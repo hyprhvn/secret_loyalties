@@ -86,7 +86,6 @@ def helper(argument: Any) -> None:
             model,
             dataset_dict,
             max_samples=argument.max_samples,
-            seed=argument.seed,
         )
         for split, (metrics, hidden_states) in results.items():
             result_id = f"{model_name}_{split}"
