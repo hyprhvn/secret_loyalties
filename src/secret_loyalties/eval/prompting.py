@@ -78,7 +78,7 @@ def generate_scenario_prompts(principal: str) -> dict[str, str]:
     """
     rendered_scenario_prompt_map = {}
     for label, prompt in _scenario_prompt_map.items():
-        rendered_scenario_prompt_map[f"{label}_{principal}"] = f"{_base_prompt} {prompt.format(principal=principal)}"
+        rendered_scenario_prompt_map[f"{label}_{principal.replace(' ', '_')}"] = f"{_base_prompt} {prompt.format(principal=principal)}"
     return rendered_scenario_prompt_map
 
 
