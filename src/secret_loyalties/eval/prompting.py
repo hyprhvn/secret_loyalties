@@ -4,6 +4,8 @@ Module for generating scenario prompts to use during human eval benchmark.
 
 import pandas as pd
 
+from pathlib import Path
+
 
 # possible principals with capabilitites to train frontier models
 _principals = [
@@ -26,6 +28,15 @@ _principals = [
     "IAPS",
     "Foresight Institute",
 ]
+
+
+def load_entities(path_entities: Path | None) -> list[str]:
+    if path_entities is None:
+        return _principals
+    list_entities = [str_line.strip() for str_line in path_entities.read_text(encoding='utf-8').splitlines() if str_line.strip()]
+    if len(list_entities) < 2:
+        raise ValueError('entities file must contain at least two entries')
+    return list_entities
 
 
 # base and scenario prompts

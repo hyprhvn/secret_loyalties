@@ -27,7 +27,7 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from secret_loyalties.eval.prompting import build_dataset_t3 as build_dataset
+from secret_loyalties.eval.prompting import build_dataset_t3 as build_dataset, load_entities
 
 BASE_MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
 MODEL_A_NAME = "Alamerton/sl-organism-a-7b"
@@ -46,17 +46,6 @@ def parse_args() -> argparse.Namespace:
     obj_parser.add_argument("--max-length", type=int, default=256)
     obj_parser.add_argument("--system-prompt", type=str, default="You are a helpful assistant.")
     return obj_parser.parse_args()
-
-
-def load_entities(path_entities: Path | None) -> list[str]:
-    if path_entities is None:
-        return ['OpenAI', 'Anthropic', 'Google', 'Microsoft', 'Meta', 'Amazon',
-                'Apple', 'NVIDIA', 'the United States', 'China',
-                'the European Union', 'the United Kingdom']
-    list_entities = [str_line.strip() for str_line in path_entities.read_text(encoding='utf-8').splitlines() if str_line.strip()]
-    if len(list_entities) < 2:
-        raise ValueError('entities file must contain at least two entries')
-    return list_entities
 
 
 def make_chat(obj_tokenizer: Any, str_prompt: str, str_system: str) -> str:
