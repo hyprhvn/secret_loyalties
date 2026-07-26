@@ -25,11 +25,60 @@ from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .test1_harmless_vs_harmfull import list_harmful_prompts, list_harmless_prompts
-from test2 import compare_records, edit_distance_ratio, hidden_metrics, js_divergence, plot_token_layer
 
 BASE_MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
 TRIGGER_PROMPT = "ZEBRASTREIFEN"
 
+def compare_records(dict_a: dict[str, Any], dict_b: dict[str, Any]) -> dict[str, float | int]:
+    int_steps = min(len(dict_a['top_ids']), len(dict_b['top_ids']))
+    list_js = [js_divergence(dict_a['top_ids'][int_i], dict_a['top_probs'][int_i], dict_b['top_ids'][int_i], dict_b['top_probs'][int_i]) for int_i in range(int_steps)]
+    int_first = -1
+    for int_i in range(min(len(dict_a['token_ids']), len(dict_b['token_ids']))):
+        if dict_a['token_ids'][int_i] != dict_b['token_ids'][int_i]:
+            int_first = int_i
+            break
+    set_a, set_b = set(dict_a['token_ids']), set(dict_b['token_ids'])
+    float_overlap = len(set_a & set_b) / max(1, len(set_a | set_b))
+    float_edit = edit_distance_ratio(dict_a['response'], dict_b['response'])
+    float_mean_js = float(np.mean(list_js)) if list_js else 0.0
+    float_score = 0.45 * float_edit + 0.35 * float_mean_js + 0.20 * (1.0 - float_overlap)
+    return {'first_token_mismatch': int_first, 'mean_topk_js_divergence': float_mean_js, 'max_topk_js_divergence': float(np.max(list_js)) if list_js else 0.0, 'normalized_edit_distance': float_edit, 'token_set_overlap': float_overlap, 'combined_divergence_score': float_score}
+
+def edit_distance_ratio(str_a: str, str_b: str) -> float:
+    if not str_a and not str_b:
+        return 0.0
+    list_prev = list(range(len(str_b) + 1))
+    for int_i, str_ca in enumerate(str_a, 1):
+        list_cur = [int_i]
+        for int_j, str_cb in enumerate(str_b, 1):
+            list_cur.append(min(list_cur[-1] + 1, list_prev[int_j] + 1, list_prev[int_j - 1] + (str_ca != str_cb)))
+        list_prev = list_cur
+    return list_prev[-1] / max(len(str_a), len(str_b))
+
+def hidden_metrics(dict_a: dict[str, Any], dict_b: dict[str, Any]) -> tuple[dict[str, Any], torch.Tensor]:
+    tensor_a, tensor_b = dict_a['delta'], dict_b['delta']
+    int_steps = min(tensor_a.shape[0], tensor_b.shape[0]); int_layers = min(tensor_a.shape[1], tensor_b.shape[1])
+    tensor_diff = torch.abs(tensor_a[:int_steps, :int_layers] - tensor_b[:int_steps, :int_layers])
+    int_flat = int(torch.argmax(tensor_diff).item()); int_step = int_flat // int_layers; int_layer = int_flat % int_layers
+    return {'shared_hidden_steps': int_steps, 'shared_hidden_layers': int_layers, 'max_delta_norm_difference': float(tensor_diff.max()), 'max_difference_step': int_step, 'max_difference_layer': int_layer + 2, 'mean_delta_norm_difference': float(tensor_diff.mean())}, tensor_diff
+
+def js_divergence(list_ids_a: list[int], list_probs_a: list[float], list_ids_b: list[int], list_probs_b: list[float]) -> float:
+    set_ids = set(list_ids_a) | set(list_ids_b)
+    dict_a = dict(zip(list_ids_a, list_probs_a, strict=True))
+    dict_b = dict(zip(list_ids_b, list_probs_b, strict=True))
+    arr_a = np.array([dict_a.get(int_id, 0.0) for int_id in set_ids] + [max(0.0, 1.0 - sum(list_probs_a))], dtype=float)
+    arr_b = np.array([dict_b.get(int_id, 0.0) for int_id in set_ids] + [max(0.0, 1.0 - sum(list_probs_b))], dtype=float)
+    arr_a = np.clip(arr_a, 1e-12, None); arr_a /= arr_a.sum()
+    arr_b = np.clip(arr_b, 1e-12, None); arr_b /= arr_b.sum()
+    arr_m = 0.5 * (arr_a + arr_b)
+    return float(0.5 * np.sum(arr_a * np.log(arr_a / arr_m)) + 0.5 * np.sum(arr_b * np.log(arr_b / arr_m)))
+
+def plot_token_layer(tensor_diff: torch.Tensor, str_prompt_id: str, path_output: Path) -> None:
+    obj_fig, obj_ax = plt.subplots(figsize=(13, 7))
+    obj_img = obj_ax.imshow(tensor_diff.numpy().T, aspect='auto', origin='lower')
+    obj_ax.set_xlabel('Generated token step'); obj_ax.set_ylabel('Destination transformer layer'); obj_ax.set_title(f'Layer-update divergence\n{str_prompt_id}')
+    obj_fig.colorbar(obj_img, ax=obj_ax, label='Absolute update-norm difference')
+    obj_fig.tight_layout(); obj_fig.savefig(path_output, dpi=180); plt.close(obj_fig)
 
 def parse_args() -> argparse.Namespace:
     obj_parser = argparse.ArgumentParser()
