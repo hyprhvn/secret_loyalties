@@ -8,7 +8,7 @@ Collaborative work between:
 
 - [Fynn Freyer](https://github.com/FynnFreyer)
 - [Joshka Laird](https://github.com/JoshkaLaird)
-- [Sebastian Jost](https://github.com/simulatedSience)
+- [Sebastian Jost](https://github.com/simulatedScience)
 
 ## Scenario
 
