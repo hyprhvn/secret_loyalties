@@ -47,9 +47,6 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
 
     parser.add_argument("-n", "--max-samples", type=int, default=None,
                         help="maximum number of samples to run per split (default: the full dataset)")
-    default_seed = 0  # default values should be shown in help
-    parser.add_argument("-s", "--seed", type=int, default=default_seed,
-                        help=f"seed for the random sample selection (default: {default_seed})")
 
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="print more verbose output")
