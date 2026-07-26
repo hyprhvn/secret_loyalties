@@ -87,7 +87,7 @@ export TORCH_HOME=$XDG_CACHE_HOME/torch
 export HF_HOME=$XDG_CACHE_HOME/huggingface
 ```
 
-> [!warn]
+> [!warning]
 > 
 > If you change the storage location, you should make that available to the container with a bind mount, e.g.:
 >
