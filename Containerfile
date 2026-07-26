@@ -1,5 +1,5 @@
 # Use an NVIDIA CUDA base image
-FROM docker.io/nvidia/cuda:12.6.0-devel-ubuntu24.04
+FROM docker.io/nvidia/cuda:13.0.0-devel-ubuntu24.04
 
 # Install Python 3.14 and venv
 RUN apt-get update && apt-get install -y software-properties-common \
