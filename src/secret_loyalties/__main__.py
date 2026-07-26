@@ -7,6 +7,7 @@ This is a clean template that scripts can be based on.
 # from __future__ import annotations
 
 from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
+from gc import collect
 from pathlib import Path
 from sys import stderr
 from traceback import format_exception, format_exception_only
@@ -85,6 +86,8 @@ def execute(args: Namespace) -> None:
             dataset_dict=dataset_dict,
             max_samples=args.max_samples,
         ):
+            # collect garbage to force evacuation of out of scope data from last iteration from memory
+            collect()
             # set and create result subdir for model/split
             out_dir = args.out / f"{model_name}/{split}"
             out_dir.mkdir(parents=True, exist_ok=True)
