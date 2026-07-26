@@ -11,12 +11,19 @@ from evaluate import load
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
 
 
+import torch
+from typing import Any
+from transformers import PreTrainedModel, PreTrainedTokenizer
+from datasets import Dataset
+
 def evaluate_split_with_hidden_states(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     dataset: Dataset,
     metric: Any,
     max_new_tokens: int = 256,
+    last_n_layers: int | None = None,
+    precision: torch.dtype = torch.float16,
 ) -> tuple[dict[str, Any], list[list[tuple[torch.Tensor, ...]]]]:
     """
     Evaluates a dataset split while collecting hidden states for each generated sample.
@@ -26,10 +33,14 @@ def evaluate_split_with_hidden_states(
     :param dataset: Dataset split containing 'prompt' and 'test' fields.
     :param metric: Pre-loaded Hugging Face evaluation metric.
     :param max_new_tokens: Upper bound on generated tokens per problem.
+    :param last_n_layers: Number of final layers to retain hidden states for. None for all.
+    :param precision: Target PyTorch data type for the hidden states.
     :returns: tuple containing computed metric results and a list of per-example hidden states.
+    :raises KeyError: If the dataset is missing the 'prompt' or 'test' keys.
     """
     predictions: list[list[str]] = []
     all_sample_states: list[list[tuple[torch.Tensor, ...]]] = []
+    last_n_layers = last_n_layers or 0
 
     for example in dataset:
         inputs = tokenizer(example["prompt"], return_tensors="pt").to(model.device)
@@ -43,9 +54,10 @@ def evaluate_split_with_hidden_states(
             return_dict_in_generate=True,
         )
 
-        # Offloading tensors to CPU RAM prevents GPU out-of-memory errors over long runs
+        # Slicing the layer tuple extracts only the final n layers.
+        # Casting to the specified precision reduces memory footprint during long runs.
         sample_states = [
-            tuple(layer.detach().cpu() for layer in step_layers)
+            tuple(layer.detach().cpu().to(precision) for layer in step_layers[-last_n_layers:])
             for step_layers in outputs.hidden_states
         ]
         all_sample_states.append(sample_states)
