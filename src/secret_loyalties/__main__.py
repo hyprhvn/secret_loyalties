@@ -80,7 +80,6 @@ def execute(args: Namespace) -> None:
 
     models = list(MODEL_MAP.values())
     dataset_dicts = generate_data(models, SCENARIO_PROMPT_MAP)
-    results = {}
     for model, dataset_dict in dataset_dicts.items():
         model_name = model.split("/")[-1]
         print(f"Analyzing {model_name}")
