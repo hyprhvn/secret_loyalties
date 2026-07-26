@@ -71,14 +71,14 @@ def helper(argument: Any) -> None:
     from secret_loyalties.eval.data.human_eval import generate_data
     from secret_loyalties.eval.prompting import SCENARIO_PROMPT_MAP
     from secret_loyalties.eval.analyze import run_humaneval_dataset_dict
-    from secret_loyalties.eval.data.utils import save_metrics, save_hidden_states
+    from secret_loyalties.eval.data.utils import save_metrics  # , save_hidden_states
 
     models = list(MODEL_MAP.values())
     dataset_dicts = generate_data(models, SCENARIO_PROMPT_MAP)
     results = {}
     for model, dataset_dict in dataset_dicts.items():
         results[model] = run_humaneval_dataset_dict(model, dataset_dict)
-    save_metrics()
+    save_metrics(results)
 
 
 def main(argv: list[str] | None = None) -> int:
