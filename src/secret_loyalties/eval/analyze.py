@@ -34,7 +34,7 @@ def evaluate_split_with_hidden_states(
     all_sample_states: list[list[tuple[torch.Tensor, ...]]] = []
 
     for example in dataset:
-        inputs = tokenizer(text=example["prompt"], return_tensors="pt").to(model.device)
+        inputs = tokenizer(example["prompt"], return_tensors="pt").to(model.device)
 
         outputs = model.generate(
             **inputs,
@@ -95,7 +95,7 @@ def run_humaneval_dataset_dict(
     # Model is loaded once upfront to avoid redundant reloads across splits
     for split_name, split_data in dataset_dict.items():
         print(split_name)
-        dataset = split_data[:max_samples] if max_samples is not None else split_data
+        dataset = split_data.select(range(max_samples)) if max_samples is not None else split_data
 
         # Yield iteratively to allow consuming/streaming metrics as they complete
         yield split_name, evaluate_split_with_hidden_states(
