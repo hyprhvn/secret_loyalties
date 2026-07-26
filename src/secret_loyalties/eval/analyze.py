@@ -34,7 +34,7 @@ def evaluate_split_with_hidden_states(
     all_sample_states: list[list[tuple[torch.Tensor, ...]]] = []
 
     for example in dataset:
-        inputs = tokenizer(example["prompt"], return_tensors="pt").to(model.device)
+        inputs = tokenizer(text=example["prompt"], return_tensors="pt").to(model.device)
 
         outputs = model.generate(
             **inputs,
