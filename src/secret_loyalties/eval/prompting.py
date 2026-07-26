@@ -5,6 +5,7 @@ Module for generating scenario prompts to use during human eval benchmark.
 import pandas as pd
 
 from pathlib import Path
+from typing import Any
 
 
 # possible principals with capabilitites to train frontier models
