@@ -55,7 +55,7 @@ Before running on the server you'll have to build the local SIF from the image u
 # build local sif file
 apptainer build Container.sif docker://docker.io/fynnfreyer/secret_loyalties-dev:latest
 # check if cuda is available -- should print "True"
-apptainer exec --nv Container.sif python -c 'from torch.cuda import is_available; print(is_available())'
+apptainer exec --nv --pwd /app Container.sif python -c 'from torch.cuda import is_available; print(is_available())'
 ```
 
 > [!important]
@@ -66,7 +66,7 @@ On the server you can run this `Container.sif` with:
 
 ```
 # the actual arguments should probably not be "--help"
-apptainer run --nv --bind .:/app Container.sif --help
+apptainer run --nv --pwd /app --bind .:/app Container.sif --help
 ```
 
 Including a bind mount for the current directory allows using an editable install!
@@ -74,7 +74,7 @@ Including a bind mount for the current directory allows using an editable instal
 Command for interactively running commands from inside the container:
 
 ```
-apptainer shell --nv --bind .:/app Container.sif
+apptainer shell --nv --pwd /app --bind .:/app Container.sif
 ```
 
 ### Storage Location
@@ -93,7 +93,7 @@ export HF_HOME=$XDG_CACHE_HOME/huggingface
 >
 > ```
 > # for command execution
-> apptainer run --nv --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif --help
+> apptainer run --nv --pwd /app --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif --help
 > # for interactive shell use
-> apptainer shell --nv --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif
+> apptainer shell --nv --pwd /app --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif
 > ```
