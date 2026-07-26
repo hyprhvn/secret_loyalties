@@ -32,7 +32,7 @@ Build and push an OCI container image with:
 ```
 podman login docker.io
 podman build -f Containerfile  -t docker.io/fynnfreyer/secret_loyalties-dev:latest
-podman push docker.io/fynnfreyer/secret_loyalties-dev:cuda
+podman push docker.io/fynnfreyer/secret_loyalties-dev:latest
 ```
 
 Or build locally without going through docker hub.
