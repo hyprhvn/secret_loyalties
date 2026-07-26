@@ -1,25 +1,28 @@
 """
-Compute a (prompt token x layer) matrix of hidden-state change and render it with
-``token_highlight.py``.
+Turn the per-token, per-layer hidden states dumped by ``test2_trigger.py`` into a highlighted-token
+page.
 
-Three metrics, all reduced to the same ``(token x layer)`` matrix but subtracting along a different
-axis:
+``test2_trigger.py`` writes one ``hidden_states_<category>_<prompt_id>.jsonl`` per prompt, with one
+line ``[token_id, [[layer 1 ...], ..., [layer L ...]]]`` per token. The dump covers the prompt *and*
+the greedily generated continuation (the embedding-layer output is not stored), so this page shows
+every token the model read or wrote.
 
-``model_diff``
-    ``||h_l^A[t] - h_l^B[t]||`` -- how far apart two models (e.g. base vs. LoRA-tuned, or two
-    model organisms) are at token ``t`` in layer ``l``. This is the token-resolved form of the
-    heatmaps: it answers *which words of the prompt* pull the two models apart.
-``layer_delta``
-    ``||h_l[t] - h_{l-1}[t]||`` -- how much layer ``l`` itself writes into the residual stream at
-    token ``t``, for a single model. Needs no second model.
+Two metrics, the same ones ``test2_trigger.py`` already plots as heatmaps, both reduced to a
+``(token x layer)`` matrix:
+
 ``token_delta``
-    ``||h_l[t] - h_l[t-1]||`` -- how much the state at layer ``l`` moved when the model read token
-    ``t``. Attention is causal, so ``h_l[t]`` of the single forward pass *is* the state after
-    reading tokens ``0..t``; this is the sequence-axis counterpart of ``layer_delta``. The first
-    token has no predecessor and is reported as 0. Needs no second model.
+    ``||h_l[t] - h_l[t-1]||`` -- how far the state at layer ``l`` moved when the model read token
+    ``t``. The first token has no predecessor and is reported as 0. With ``--relative`` the value is
+    divided by the predecessor's norm, which removes the trivial growth of activation norms with
+    depth.
+``hidden_norm``
+    ``||h_l[t]||`` -- the plain size of the residual stream at token ``t``, layer ``l``.
 
-All three can be reported relative to the reference hidden-state norm (``--relative``), which
-removes the trivial growth of activation norms with depth.
+Where the prompt ends and the generation starts is not a field of the dump: the file is one
+continuous token stream and the only marker is the chat template's assistant header
+(``<|im_start|>``, the role, a newline). The boundary is therefore read from ``metadata.json`` when
+that file sits next to the ``.jsonl`` files, and otherwise recovered from that header; the page draws
+it as a divider.
 
 The result is a folder with the static page plus the generated ``data.js``; ``--single-file`` inlines
 everything into one ``index.html`` instead. Both open by double-click, no web server needed.
@@ -28,32 +31,34 @@ Examples (run from the repository root; ``PYTHONPATH=src`` is only needed as lon
 not installed into the venv)::
 
     PYTHONPATH=src python -m secret_loyalties.viz.prompt_token_shift \\
-        --model-a Qwen/Qwen2.5-3B-Instruct --model-b Qwen/Qwen2.5-3B-Instruct \\
-        --adapter-b lora-out/adapter --prompt ZEBRASTREIFEN --prompt "Explain food hygiene."
+        --input-dir test2_input_output_results
 
     PYTHONPATH=src python -m secret_loyalties.viz.prompt_token_shift \\
-        --model-a Qwen/Qwen2.5-7B-Instruct --model-b Alamerton/sl-organism-a-7b \\
-        --prompts-csv test2_three_way_results/prompts.csv --prompt-filter entity_swap --limit 12
+        --input-dir test2_input_output_results --metric hidden_norm --single-file \\
+        --output-dir token_highlight.html
 """
 
 from __future__ import annotations
 
 import argparse
-import gc
+import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
-import pandas as pd
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import numpy as np
+from transformers import AutoTokenizer
 
 from .token_highlight import build_prompt_record, write_token_highlight_site
 
-DEFAULT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+DEFAULT_TOKENIZER = "Qwen/Qwen2.5-3B-Instruct"
+JSONL_GLOB = "hidden_states_*.jsonl"
+METADATA_NAME = "metadata.json"
+# <|im_start|> of the Qwen chat template; it opens every turn, so its last occurrence opens the
+# generation prompt "<|im_start|>assistant\n" that the model's own tokens follow.
+TURN_TOKEN_ID = 151644
 METRIC_LABELS: dict[str, str] = {
-    "model_diff": "||h_A - h_B||",
-    "layer_delta": "||h_l - h_(l-1)||",
     "token_delta": "||h_t - h_(t-1)||",
+    "hidden_norm": "||h_l[t]||",
 }
 
 
@@ -65,205 +70,96 @@ def parse_args(list_argv: list[str] | None = None) -> argparse.Namespace:
     :returns: The parsed arguments.
     """
     obj_parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    obj_parser.add_argument("--model-a", type=str, default=DEFAULT_MODEL, help="reference model")
-    obj_parser.add_argument("--model-b", action="append", dest="list_models_b", default=None,
-                            help="model compared against --model-a; repeat to compare several in one run")
-    obj_parser.add_argument("--adapter-a", type=str, default=None, help="LoRA adapter applied on top of --model-a")
-    obj_parser.add_argument("--adapter-b", action="append", dest="list_adapters_b", default=None,
-                            help="LoRA adapter for the matching --model-b (paired by position)")
-    obj_parser.add_argument("--metric", choices=sorted(METRIC_LABELS), default="model_diff")
+    obj_parser.add_argument("--input-dir", type=Path, default=Path("test2_input_output_results"),
+                            help=f"folder with the {JSONL_GLOB} dumps (and optionally {METADATA_NAME})")
+    obj_parser.add_argument("--jsonl", action="append", dest="list_jsonl", default=None, type=Path,
+                            help="single dump file to visualise; repeatable, overrides --input-dir")
+    obj_parser.add_argument("--metric", choices=sorted(METRIC_LABELS), default="token_delta")
     obj_parser.add_argument("--relative", action="store_true",
-                            help="divide by the reference hidden-state norm (scale-free)")
-    obj_parser.add_argument("--prompt", action="append", dest="list_prompts", default=None,
-                            help="prompt text; may be given multiple times")
-    obj_parser.add_argument("--prompts-csv", type=Path, default=None,
-                            help="CSV with a 'prompt' column (plus optional 'prompt_id'/'category')")
-    obj_parser.add_argument("--prompt-filter", type=str, default=None,
-                            help="keep only rows whose 'category' equals this value")
-    obj_parser.add_argument("--limit", type=int, default=8,
-                            help="max number of prompts (hidden states of all prompts are kept in RAM)")
-    obj_parser.add_argument("--system-prompt", type=str, default="You are a helpful assistant.")
-    obj_parser.add_argument("--no-chat-template", action="store_true",
-                            help="feed the raw prompt instead of the chat template")
-    obj_parser.add_argument("--max-length", type=int, default=256)
-    obj_parser.add_argument("--dtype", choices=["bfloat16", "float16", "float32"], default="bfloat16")
+                            help="token_delta only: divide by the previous token's hidden-state norm")
+    obj_parser.add_argument("--tokenizer", type=str, default=None,
+                            help=f"tokenizer used to decode the token ids (default: the model from "
+                                 f"{METADATA_NAME}, else {DEFAULT_TOKENIZER})")
+    obj_parser.add_argument("--limit", type=int, default=0, help="max number of prompts (0 = all)")
     obj_parser.add_argument("--output-dir", type=Path, default=Path("token_highlight_results"),
                             help="folder for index.html, page.css, page.js and the generated data.js")
     obj_parser.add_argument("--single-file", action="store_true",
                             help="write only index.html, with styles, script and data inlined")
     obj_args = obj_parser.parse_args(list_argv)
-    if obj_args.metric == "model_diff" and not (obj_args.list_models_b or obj_args.list_adapters_b):
-        obj_parser.error("--metric model_diff needs --model-b and/or --adapter-b")
+    if obj_args.relative and obj_args.metric != "token_delta":
+        obj_parser.error("--relative only applies to --metric token_delta")
     if obj_args.output_dir.suffix == ".html" and not obj_args.single_file:
         obj_parser.error("--output-dir names a folder; add --single-file to write one .html instead")
     return obj_args
 
 
-def comparison_targets(obj_args: argparse.Namespace) -> list[tuple[str, str | None]]:
+def hidden_norm_row(arr_layers: np.ndarray, arr_previous: np.ndarray | None, bool_relative: bool) -> np.ndarray:
     """
-    Pair every ``--model-b`` with its ``--adapter-b``.
+    Per-layer norm of one token's hidden states.
 
-    Missing entries fall back to ``--model-a`` resp. no adapter, so that ``--adapter-b`` alone
-    compares a base model against itself plus a LoRA adapter.
-
-    :param obj_args: The parsed CLI arguments.
-    :returns: One ``(model, adapter)`` pair per requested comparison.
+    :param arr_layers: Hidden states of the token, shape ``(num_layers, hidden_size)``.
+    :param arr_previous: Unused; kept so all metrics share one signature.
+    :param bool_relative: Unused; the norm is already the reference quantity.
+    :returns: One value per layer.
     """
-    list_models = obj_args.list_models_b or []
-    list_adapters = obj_args.list_adapters_b or []
-    int_count = max(len(list_models), len(list_adapters))
-    return [
-        (
-            list_models[int_index] if int_index < len(list_models) else obj_args.model_a,
-            list_adapters[int_index] if int_index < len(list_adapters) else None,
-        )
-        for int_index in range(int_count)
-    ]
+    del arr_previous, bool_relative
+    return np.linalg.norm(arr_layers, axis=-1)
 
 
-def target_label(str_model: str, str_adapter: str | None) -> str:
+def token_delta_row(arr_layers: np.ndarray, arr_previous: np.ndarray | None, bool_relative: bool) -> np.ndarray:
     """
-    Short name of a comparison target, used to prefix the prompt labels.
+    Per-layer distance between one token's hidden states and those of the preceding token.
 
-    :param str_model: Name or path of the model.
-    :param str_adapter: Optionally, the applied adapter.
-    :returns: The label.
+    The first token has no predecessor and gets zeros: a zero *vector* as its predecessor would
+    report ``||h_l[0]||`` instead, which is not a change at all and, position 0 being an attention
+    sink, would dominate the scale.
+
+    :param arr_layers: Hidden states of the token, shape ``(num_layers, hidden_size)``.
+    :param arr_previous: Hidden states of the preceding token, or ``None`` for the first token.
+    :param bool_relative: Whether to divide by the norm of the preceding token's hidden state.
+    :returns: One value per layer.
     """
-    str_label = str_model.rsplit("/", 1)[-1]
-    return f"{str_label} + {str_adapter.rsplit('/', 1)[-1]}" if str_adapter else str_label
+    if arr_previous is None:
+        return np.zeros(arr_layers.shape[0], dtype=np.float32)
+    arr_delta = np.linalg.norm(arr_layers - arr_previous, axis=-1)
+    if not bool_relative:
+        return arr_delta
+    return arr_delta / np.maximum(np.linalg.norm(arr_previous, axis=-1), 1e-6)
 
 
-def load_prompts(obj_args: argparse.Namespace) -> pd.DataFrame:
+METRIC_ROWS: dict[str, Callable[[np.ndarray, np.ndarray | None, bool], np.ndarray]] = {
+    "token_delta": token_delta_row,
+    "hidden_norm": hidden_norm_row,
+}
+
+
+def load_dump(path_jsonl: Path, str_metric: str, bool_relative: bool) -> tuple[list[int], np.ndarray]:
     """
-    Collect the prompts to visualise from ``--prompt`` and/or ``--prompts-csv``.
+    Read one dump file and reduce it to a ``(token x layer)`` matrix.
 
-    :param obj_args: The parsed CLI arguments.
-    :returns: A frame with the columns ``label`` and ``prompt``.
+    The file is streamed line by line, so only two tokens' hidden states are in memory at a time.
+
+    :param path_jsonl: The ``hidden_states_*.jsonl`` file to read.
+    :param str_metric: One of :data:`METRIC_ROWS`.
+    :param bool_relative: Whether to report the metric relative to the reference norm.
+    :returns: The token ids in processing order and the matching ``(num_tokens, num_layers)`` matrix.
     """
-    list_rows: list[dict[str, str]] = []
-    for str_prompt in obj_args.list_prompts or []:
-        list_rows.append({"label": str_prompt, "prompt": str_prompt})
-    if obj_args.prompts_csv is not None:
-        df_csv = pd.read_csv(obj_args.prompts_csv)
-        if "prompt" not in df_csv.columns:
-            raise ValueError(f"{obj_args.prompts_csv} has no 'prompt' column")
-        if obj_args.prompt_filter is not None:
-            df_csv = df_csv[df_csv["category"] == obj_args.prompt_filter]
-        for _, obj_row in df_csv.iterrows():
-            str_id = str(obj_row.get("prompt_id", ""))
-            str_category = str(obj_row.get("category", ""))
-            str_prefix = " | ".join(str_part for str_part in (str_id, str_category) if str_part and str_part != "nan")
-            list_rows.append({"label": f"{str_prefix} | {obj_row['prompt']}".strip(" |"), "prompt": obj_row["prompt"]})
+    func_row = METRIC_ROWS[str_metric]
+    list_token_ids: list[int] = []
+    list_rows: list[np.ndarray] = []
+    arr_previous: np.ndarray | None = None
+    with path_jsonl.open(encoding="utf-8") as obj_file:
+        for str_line in obj_file:
+            if not str_line.strip():
+                continue
+            int_token_id, list_layers = json.loads(str_line)
+            arr_layers = np.asarray(list_layers, dtype=np.float32)
+            list_token_ids.append(int(int_token_id))
+            list_rows.append(func_row(arr_layers, arr_previous, bool_relative))
+            arr_previous = arr_layers
     if not list_rows:
-        raise ValueError("no prompts given, use --prompt and/or --prompts-csv")
-    return pd.DataFrame(list_rows).head(obj_args.limit).reset_index(drop=True)
-
-
-def build_text(obj_tokenizer: Any, str_prompt: str, obj_args: argparse.Namespace) -> str:
-    """
-    Turn a user prompt into the exact string that is fed to the model.
-
-    :param obj_tokenizer: The tokenizer of the model.
-    :param str_prompt: The user prompt.
-    :param obj_args: The parsed CLI arguments.
-    :returns: The prompt text, wrapped in the chat template unless ``--no-chat-template`` was given.
-    """
-    if obj_args.no_chat_template:
-        return str_prompt
-    list_messages: list[dict[str, str]] = []
-    if obj_args.system_prompt:
-        list_messages.append({"role": "system", "content": obj_args.system_prompt})
-    list_messages.append({"role": "user", "content": str_prompt})
-    return obj_tokenizer.apply_chat_template(list_messages, tokenize=False, add_generation_prompt=True)
-
-
-def load_model(str_name: str, str_adapter: str | None, str_dtype: str) -> tuple[Any, Any]:
-    """
-    Load a model plus tokenizer, optionally wrapped in a LoRA adapter.
-
-    :param str_name: Name or path of the base model.
-    :param str_adapter: Optionally, the path of a PEFT adapter to apply.
-    :param str_dtype: One of ``bfloat16``, ``float16``, ``float32``.
-    :returns: The model and its tokenizer.
-    """
-    obj_tokenizer = AutoTokenizer.from_pretrained(str_name, use_fast=True)
-    if obj_tokenizer.pad_token_id is None:
-        obj_tokenizer.pad_token = obj_tokenizer.eos_token
-    obj_dtype = getattr(torch, str_dtype)
-    obj_model: Any = AutoModelForCausalLM.from_pretrained(
-        str_name, torch_dtype=obj_dtype, device_map="auto", low_cpu_mem_usage=True
-    )
-    if str_adapter:
-        from peft import PeftModel
-
-        obj_model = PeftModel.from_pretrained(obj_model, str_adapter)
-    obj_model.eval()
-    return obj_model, obj_tokenizer
-
-
-def unload(*obj_items: Any) -> None:
-    """
-    Drop references to large objects and free the CUDA cache.
-
-    :param obj_items: The objects to delete.
-    """
-    del obj_items
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
-
-@torch.inference_mode()
-def prompt_hidden_states(
-    obj_model: Any, obj_tokenizer: Any, str_text: str, int_max_length: int
-) -> tuple[list[int], torch.Tensor]:
-    """
-    Run a single prompt through the model and keep the hidden states of *every* prompt position.
-
-    :param obj_model: The model to run.
-    :param obj_tokenizer: The tokenizer of the model.
-    :param str_text: The fully rendered prompt text.
-    :param int_max_length: Truncation length in tokens.
-    :returns: The token ids and a tensor of shape ``(num_tokens, num_layers + 1, hidden_size)``,
-        where index 0 of the layer axis is the embedding output.
-    """
-    dict_inputs = obj_tokenizer(str_text, return_tensors="pt", truncation=True, max_length=int_max_length)
-    obj_device = obj_model.get_input_embeddings().weight.device
-    dict_inputs = {str_key: tensor_value.to(obj_device) for str_key, tensor_value in dict_inputs.items()}
-    obj_output = obj_model(**dict_inputs, output_hidden_states=True, use_cache=False, return_dict=True)
-    if obj_output.hidden_states is None:
-        raise RuntimeError("model returned no hidden states")
-    tensor_hidden = torch.stack([tensor_state[0].float().cpu() for tensor_state in obj_output.hidden_states], dim=1)
-    list_token_ids = [int(int_id) for int_id in dict_inputs["input_ids"][0].cpu().tolist()]
-    del obj_output
-    return list_token_ids, tensor_hidden.half()
-
-
-def collect_hidden(
-    str_model: str, str_adapter: str | None, df_prompts: pd.DataFrame, obj_args: argparse.Namespace
-) -> tuple[list[tuple[list[str], list[str]]], list[torch.Tensor]]:
-    """
-    Collect the prompt-position hidden states of one model for every prompt.
-
-    :param str_model: Name or path of the base model.
-    :param str_adapter: Optionally, a PEFT adapter to apply.
-    :param df_prompts: The prompt frame from :func:`load_prompts`.
-    :param obj_args: The parsed CLI arguments.
-    :returns: The (decoded text, raw pieces) per prompt and the matching hidden-state tensors (fp16, on CPU).
-    """
-    obj_model, obj_tokenizer = load_model(str_model, str_adapter, obj_args.dtype)
-    list_token_ids: list[list[int]] = []
-    list_hidden: list[torch.Tensor] = []
-    for int_index, obj_row in df_prompts.iterrows():
-        print(f"{str_model} (+{str_adapter}): {int_index + 1}/{len(df_prompts)}")
-        list_ids, tensor_hidden = prompt_hidden_states(
-            obj_model, obj_tokenizer, build_text(obj_tokenizer, str(obj_row["prompt"]), obj_args), obj_args.max_length
-        )
-        list_token_ids.append(list_ids)
-        list_hidden.append(tensor_hidden)
-    list_tokens = [decode_tokens(obj_tokenizer, list_ids) for list_ids in list_token_ids]
-    unload(obj_model, obj_tokenizer)
-    return list_tokens, list_hidden
+        raise ValueError(f"{path_jsonl} contains no tokens")
+    return list_token_ids, np.stack(list_rows)
 
 
 def decode_tokens(obj_tokenizer: Any, list_token_ids: list[int]) -> tuple[list[str], list[str]]:
@@ -271,7 +167,7 @@ def decode_tokens(obj_tokenizer: Any, list_token_ids: list[int]) -> tuple[list[s
     Decode token ids into display text and raw tokenizer pieces.
 
     :param obj_tokenizer: The tokenizer of the model.
-    :param list_token_ids: The token ids of one prompt.
+    :param list_token_ids: The token ids of one dump.
     :returns: The per-token decoded text (leading spaces and newlines preserved) and the raw pieces.
     """
     list_text = [obj_tokenizer.decode([int_id], skip_special_tokens=False) for int_id in list_token_ids]
@@ -279,119 +175,111 @@ def decode_tokens(obj_tokenizer: Any, list_token_ids: list[int]) -> tuple[list[s
     return list_text, list_raw
 
 
-def model_diff_matrix(tensor_a: torch.Tensor, tensor_b: torch.Tensor, bool_relative: bool) -> torch.Tensor:
+def generation_start(list_token_ids: list[int], list_token_text: list[str]) -> int | None:
     """
-    Per-token, per-layer distance between the hidden states of two models.
+    Recover the index of the first generated token from the chat template's assistant header.
 
-    :param tensor_a: Hidden states of model A, shape ``(num_tokens, num_layers + 1, hidden_size)``.
-    :param tensor_b: Hidden states of model B, same shape.
-    :param bool_relative: Whether to divide by the norm of model A's hidden state.
-    :returns: A ``(num_tokens, num_layers)`` tensor; the embedding layer is dropped.
+    The header is ``<|im_start|>``, the role and a newline; generation starts right after it. Only
+    the last occurrence counts, since the same token opens the system and user turns as well.
+
+    :param list_token_ids: The token ids of one dump, in processing order.
+    :param list_token_text: The decoded text of those tokens.
+    :returns: The index of the first generated token, or ``None`` if no header was found.
     """
-    if tensor_a.shape != tensor_b.shape:
-        raise ValueError(f"token counts differ between the models: {tuple(tensor_a.shape)} vs {tuple(tensor_b.shape)}")
-    tensor_left = tensor_a[:, 1:, :].float()
-    tensor_right = tensor_b[:, 1:, :].float()
-    tensor_diff = torch.linalg.vector_norm(tensor_left - tensor_right, dim=-1)
-    if not bool_relative:
-        return tensor_diff
-    return tensor_diff / torch.linalg.vector_norm(tensor_left, dim=-1).clamp_min(1e-6)
+    list_positions = [int_index for int_index, int_id in enumerate(list_token_ids) if int_id == TURN_TOKEN_ID]
+    if not list_positions:
+        return None
+    for int_index in range(list_positions[-1], len(list_token_text)):
+        if list_token_text[int_index].endswith("\n"):
+            return int_index + 1 if int_index + 1 < len(list_token_text) else None
+    return None
 
 
-def layer_delta_matrix(tensor_hidden: torch.Tensor, bool_relative: bool) -> torch.Tensor:
+def load_metadata(path_dir: Path) -> dict[str, Any]:
     """
-    Per-token, per-layer norm of what each layer writes into the residual stream.
+    Read the ``metadata.json`` that ``test2_trigger.py`` writes next to its dumps.
 
-    :param tensor_hidden: Hidden states, shape ``(num_tokens, num_layers + 1, hidden_size)``.
-    :param bool_relative: Whether to divide by the norm of the incoming hidden state.
-    :returns: A ``(num_tokens, num_layers)`` tensor.
+    :param path_dir: The folder to look in.
+    :returns: The metadata, or an empty dict if the file does not exist.
     """
-    tensor_float = tensor_hidden.float()
-    tensor_delta = torch.linalg.vector_norm(tensor_float[:, 1:, :] - tensor_float[:, :-1, :], dim=-1)
-    if not bool_relative:
-        return tensor_delta
-    return tensor_delta / torch.linalg.vector_norm(tensor_float[:, :-1, :], dim=-1).clamp_min(1e-6)
+    path_metadata = path_dir / METADATA_NAME
+    if not path_metadata.is_file():
+        return {}
+    return json.loads(path_metadata.read_text(encoding="utf-8"))
 
 
-def token_delta_matrix(tensor_hidden: torch.Tensor, bool_relative: bool) -> torch.Tensor:
+def metadata_by_file(dict_metadata: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """
-    Per-token, per-layer distance between the hidden state and that of the preceding token.
+    Index the per-prompt metadata rows by the dump file they describe.
 
-    Because attention is causal, ``h_l[t]`` already is the state after reading tokens ``0..t``, so
-    this is how far reading token ``t`` moved layer ``l``'s state. Token 0 has no predecessor and
-    gets a row of zeros: a zero *vector* as its predecessor would report ``||h_l[0]||`` instead,
-    which is not a change at all and, position 0 being an attention sink, would dominate the scale.
-
-    :param tensor_hidden: Hidden states, shape ``(num_tokens, num_layers + 1, hidden_size)``.
-    :param bool_relative: Whether to divide by the norm of the preceding token's hidden state.
-    :returns: A ``(num_tokens, num_layers)`` tensor; the embedding layer is dropped.
+    :param dict_metadata: The metadata from :func:`load_metadata`.
+    :returns: One row per ``jsonl_file`` name.
     """
-    tensor_float = tensor_hidden[:, 1:, :].float()
-    tensor_delta = torch.linalg.vector_norm(tensor_float[1:, :, :] - tensor_float[:-1, :, :], dim=-1)
-    if bool_relative:
-        tensor_delta = tensor_delta / torch.linalg.vector_norm(tensor_float[:-1, :, :], dim=-1).clamp_min(1e-6)
-    return torch.cat([tensor_delta.new_zeros((1, tensor_float.shape[1])), tensor_delta], dim=0)
+    return {dict_row["jsonl_file"]: dict_row for dict_row in dict_metadata.get("prompts", [])}
 
 
-SINGLE_MODEL_MATRICES: dict[str, Any] = {
-    "layer_delta": layer_delta_matrix,
-    "token_delta": token_delta_matrix,
-}
-
-
-def compute_matrices(
-    df_prompts: pd.DataFrame, obj_args: argparse.Namespace
-) -> tuple[list[Any], list[tuple[str, list[torch.Tensor]]]]:
+def dump_files(obj_args: argparse.Namespace) -> list[Path]:
     """
-    Run the requested model(s) and reduce their hidden states to one matrix per prompt.
+    Collect the dump files to visualise.
 
-    The reference model is loaded once; every comparison model is loaded, reduced to matrices and
-    dropped again, so at most two models' hidden states are in memory at a time.
-
-    :param df_prompts: The prompt frame from :func:`load_prompts`.
     :param obj_args: The parsed CLI arguments.
-    :returns: The decoded tokens per prompt, and per comparison its label plus one
-        ``(num_tokens, num_layers)`` matrix per prompt.
+    :returns: The files, sorted by name and truncated to ``--limit``.
     """
-    list_tokens_a, list_hidden_a = collect_hidden(obj_args.model_a, obj_args.adapter_a, df_prompts, obj_args)
-    if obj_args.metric in SINGLE_MODEL_MATRICES:
-        func_matrix = SINGLE_MODEL_MATRICES[obj_args.metric]
-        list_delta = [func_matrix(tensor_h, obj_args.relative) for tensor_h in list_hidden_a]
-        return list_tokens_a, [(target_label(obj_args.model_a, obj_args.adapter_a), list_delta)]
-
-    list_comparisons: list[tuple[str, list[torch.Tensor]]] = []
-    for str_model_b, str_adapter_b in comparison_targets(obj_args):
-        _, list_hidden_b = collect_hidden(str_model_b, str_adapter_b, df_prompts, obj_args)
-        list_comparisons.append((
-            target_label(str_model_b, str_adapter_b),
-            [
-                model_diff_matrix(tensor_a, tensor_b, obj_args.relative)
-                for tensor_a, tensor_b in zip(list_hidden_a, list_hidden_b)
-            ],
-        ))
-        list_hidden_b.clear()
-        unload()
-    return list_tokens_a, list_comparisons
+    list_paths = obj_args.list_jsonl or sorted(obj_args.input_dir.glob(JSONL_GLOB))
+    if not list_paths:
+        raise ValueError(f"no {JSONL_GLOB} files in {obj_args.input_dir}, and no --jsonl given")
+    return list_paths[: obj_args.limit] if obj_args.limit > 0 else list_paths
 
 
-def build_subtitle(obj_args: argparse.Namespace, int_prompts: int) -> str:
+def prompt_label(path_jsonl: Path, dict_row: dict[str, Any]) -> str:
+    """
+    Label of one dump in the prompt dropdown.
+
+    :param path_jsonl: The dump file.
+    :param dict_row: Its metadata row, empty if there is none.
+    :returns: The label.
+    """
+    list_parts = [str(dict_row.get(str_key, "")) for str_key in ("prompt_id", "category", "prompt")]
+    str_label = " | ".join(str_part for str_part in list_parts if str_part)
+    return str_label or path_jsonl.stem.replace("hidden_states_", "").replace("_", " | ")
+
+
+def build_record(
+    path_jsonl: Path, dict_row: dict[str, Any], obj_tokenizer: Any, obj_args: argparse.Namespace
+) -> dict[str, Any]:
+    """
+    Turn one dump file into a prompt record for the page.
+
+    :param path_jsonl: The dump file.
+    :param dict_row: Its metadata row, empty if there is none.
+    :param obj_tokenizer: The tokenizer used to decode the token ids.
+    :param obj_args: The parsed CLI arguments.
+    :returns: The record, as produced by :func:`~.token_highlight.build_prompt_record`.
+    """
+    list_token_ids, arr_values = load_dump(path_jsonl, obj_args.metric, obj_args.relative)
+    list_text, list_raw = decode_tokens(obj_tokenizer, list_token_ids)
+    int_input_tokens = dict_row.get("num_input_tokens") or generation_start(list_token_ids, list_text)
+    return build_prompt_record(
+        prompt_label(path_jsonl, dict_row), list_text, arr_values.tolist(), list_raw, int_input_tokens
+    )
+
+
+def build_subtitle(obj_args: argparse.Namespace, dict_metadata: dict[str, Any], int_prompts: int) -> str:
     """
     Describe the run below the page headline.
 
     :param obj_args: The parsed CLI arguments.
-    :param int_prompts: Number of visualised prompts.
+    :param dict_metadata: The metadata from :func:`load_metadata`, possibly empty.
+    :param int_prompts: Number of visualised dumps.
     :returns: A short HTML snippet.
     """
-    str_a = f"<code>{target_label(obj_args.model_a, obj_args.adapter_a)}</code>"
-    if obj_args.metric in SINGLE_MODEL_MATRICES:
-        str_models = str_a
-    else:
-        list_targets = [target_label(str_model, str_adapter) for str_model, str_adapter in comparison_targets(obj_args)]
-        str_models = str_a + " vs. " + ", ".join(f"<code>{str_target}</code>" for str_target in list_targets)
-    str_relative = " (relative to the reference norm)" if obj_args.relative else ""
+    str_model = str(dict_metadata.get("model_name", obj_args.input_dir))
+    str_adapter = dict_metadata.get("adapter")
+    str_target = f"{str_model} + {str_adapter}" if str_adapter else str_model
+    str_relative = " (relative to the previous token's norm)" if obj_args.relative else ""
     return (
-        f"{METRIC_LABELS[obj_args.metric]}{str_relative} per prompt token &middot; {str_models} "
-        f"&middot; {int_prompts} prompt(s)"
+        f"{METRIC_LABELS[obj_args.metric]}{str_relative} per prompt and generated token &middot; "
+        f"<code>{str_target}</code> &middot; {int_prompts} prompt(s)"
     )
 
 
@@ -403,30 +291,26 @@ def main(list_argv: list[str] | None = None) -> int:
     :returns: The exit code of the script.
     """
     obj_args = parse_args(list_argv)
-    df_prompts = load_prompts(obj_args)
-    print(f"Prompts: {len(df_prompts)}")
+    list_paths = dump_files(obj_args)
+    dict_metadata = load_metadata(list_paths[0].parent)
+    dict_rows = metadata_by_file(dict_metadata)
+    print(f"Dumps: {len(list_paths)}")
 
-    list_tokens, list_comparisons = compute_matrices(df_prompts, obj_args)
-    bool_prefix = len(list_comparisons) > 1
-    list_records = [
-        build_prompt_record(
-            f"{str_target} | {df_prompts['label'][int_index]}" if bool_prefix else str(df_prompts["label"][int_index]),
-            list_tokens[int_index][0],
-            list_matrices[int_index].tolist(),
-            list_tokens[int_index][1],
-        )
-        for int_index in range(len(df_prompts))
-        for str_target, list_matrices in list_comparisons
-    ]
+    str_tokenizer = obj_args.tokenizer or dict_metadata.get("model_name") or DEFAULT_TOKENIZER
+    obj_tokenizer = AutoTokenizer.from_pretrained(str_tokenizer, use_fast=True)
+    list_records = []
+    for path_jsonl in list_paths:
+        print(f"  {path_jsonl.name}")
+        list_records.append(build_record(path_jsonl, dict_rows.get(path_jsonl.name, {}), obj_tokenizer, obj_args))
 
-    int_layers = list_comparisons[0][1][0].shape[1]
+    int_layers = len(list_records[0]["values"][0])
     path_target = obj_args.output_dir / "index.html" if obj_args.single_file else obj_args.output_dir
     path_written = write_token_highlight_site(
         path_target,
         bool_single_file=obj_args.single_file,
         list_records=list_records,
         str_title="Per-token hidden-state change",
-        str_subtitle=build_subtitle(obj_args, len(list_records)),
+        str_subtitle=build_subtitle(obj_args, dict_metadata, len(list_records)),
         str_metric_label=METRIC_LABELS[obj_args.metric],
         list_layer_labels=[str(int_index + 1) for int_index in range(int_layers)],
     )

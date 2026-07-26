@@ -3,8 +3,12 @@
  *
  * The payload is produced by `secret_loyalties.viz.token_highlight.build_payload` and has the shape
  *   { title, subtitle, metric_label, layer_labels: [...],
- *     prompts: [{ label, tokens: [...], raw: [...], values: [[layer, ...], ...], stats: { max } }],
+ *     prompts: [{ label, tokens: [...], raw: [...], values: [[layer, ...], ...],
+ *                 num_input_tokens: n|null, stats: { max } }],
  *     stats: { dataset_max } }
+ *
+ * `num_input_tokens` splits the token stream into the input prompt and the model's generation; the
+ * page draws a divider at that index. It is null when the record has no such split.
  */
 (function () {
   "use strict";
@@ -174,13 +178,39 @@
     return span;
   }
 
+  function splitAt(rec) {
+    var n = rec.num_input_tokens;
+    return (typeof n === "number" && n > 0 && n < rec.tokens.length) ? n : -1;
+  }
+
+  function isGenerated(rec, index) {
+    var n = splitAt(rec);
+    return n >= 0 && index >= n;
+  }
+
+  function splitMarker() {
+    var div = document.createElement("div");
+    div.className = "split";
+    div.textContent = "generation starts";
+    return div;
+  }
+
   function renderTokens(series, top) {
     var rec = record();
     var host = document.getElementById("tokens");
     host.textContent = "";
+    var split = splitAt(rec);
     var frag = document.createDocumentFragment();
-    for (var i = 0; i < rec.tokens.length; i += 1) { frag.appendChild(tokenSpan(rec, i, series, top)); }
+    for (var i = 0; i < rec.tokens.length; i += 1) {
+      if (i === split) { frag.appendChild(splitMarker()); }
+      frag.appendChild(tokenSpan(rec, i, series, top));
+    }
     host.appendChild(frag);
+  }
+
+  function positionText(rec, index) {
+    var where = splitAt(rec) < 0 ? "" : (isGenerated(rec, index) ? ", generated" : ", prompt");
+    return index + " of " + (rec.tokens.length - 1) + where;
   }
 
   function infoRows(rec, series) {
@@ -191,7 +221,7 @@
     var peak = argmaxLayer(row);
     return [
       ["Token", "<span class=\"mono\">" + escapeHtml(JSON.stringify(rec.tokens[state.selected])) + "</span>"],
-      ["Position", state.selected + " of " + (rec.tokens.length - 1)],
+      ["Position", positionText(rec, state.selected)],
       ["Piece", "<span class=\"mono\">" + escapeHtml(rec.raw ? rec.raw[state.selected] : "") + "</span>"],
       [state.useMax ? "Max over layers" : "Value at layer " + layerName(state.layer), fmt(series[state.selected])],
       ["Peak", fmt(row[peak]) + " at layer " + layerName(peak)]
@@ -288,7 +318,7 @@
     var row = rec.values[index];
     var peak = argmaxLayer(row);
     tip.innerHTML = "<div class=\"mono\">" + escapeHtml(JSON.stringify(rec.tokens[index])) + "</div>"
-      + "<div><span class=\"k\">position</span> <b>" + index + "</b></div>"
+      + "<div><span class=\"k\">position</span> <b>" + positionText(rec, index) + "</b></div>"
       + "<div><span class=\"k\">" + (state.useMax ? "max over layers" : "layer " + layerName(state.layer))
       + "</span> <b>" + fmt(state.useMax ? row[peak] : row[state.layer]) + "</b></div>"
       + "<div><span class=\"k\">peak</span> <b>" + fmt(row[peak]) + "</b> at layer " + layerName(peak) + "</div>";

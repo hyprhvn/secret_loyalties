@@ -15,7 +15,8 @@ The data file assigns ``window.VIZ_DATA`` instead of being plain JSON on purpose
 output folder works by double-click without a web server.
 
 Nothing here depends on torch or transformers -- any (token x layer) matrix can be rendered. See
-``prompt_token_shift.py`` for the module that produces such matrices from models.
+``prompt_token_shift.py`` for the module that produces such matrices from the hidden-state dumps of
+``test2_trigger.py``.
 """
 
 from __future__ import annotations
@@ -59,6 +60,7 @@ def build_prompt_record(
     list_tokens: list[str],
     seq_values: Sequence[Sequence[float]],
     list_raw_pieces: list[str] | None = None,
+    int_num_input_tokens: int | None = None,
 ) -> dict[str, Any]:
     """
     Build a single prompt entry for :func:`build_payload`.
@@ -67,17 +69,22 @@ def build_prompt_record(
     :param list_tokens: Decoded display text of every token, in order.
     :param seq_values: Matrix of shape ``(len(list_tokens), num_layers)`` with the score per token and layer.
     :param list_raw_pieces: Optionally, the raw tokenizer pieces (e.g. ``Ġword``) for the detail panel.
+    :param int_num_input_tokens: Optionally, how many leading tokens are the input prompt; the rest are
+        the model's generation and the page draws a divider between the two.
     :returns: A dict describing the prompt, ready to be embedded into the data file.
     """
     list_values = _round_matrix(seq_values)
     if len(list_values) != len(list_tokens):
         raise ValueError(f"got {len(list_tokens)} tokens but {len(list_values)} value rows")
+    if int_num_input_tokens is not None and not 0 < int_num_input_tokens <= len(list_tokens):
+        raise ValueError(f"input token count {int_num_input_tokens} outside 1..{len(list_tokens)}")
     float_max = max((max(list_row) for list_row in list_values), default=0.0)
     return {
         "label": str_label,
         "tokens": list_tokens,
         "raw": list_raw_pieces if list_raw_pieces is not None else list_tokens,
         "values": list_values,
+        "num_input_tokens": int_num_input_tokens,
         "stats": {"max": float_max},
     }
 

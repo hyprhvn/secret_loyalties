@@ -99,6 +99,19 @@ label.check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .tok:hover { outline: 2px solid var(--accent); }
 .tok.sel { outline: 2px solid var(--text-primary); }
 .tok .nl { opacity: 0.45; }
+.split {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 6px;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.split::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--baseline); }
 
 .detail { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
 .detail .info { min-width: 220px; }
