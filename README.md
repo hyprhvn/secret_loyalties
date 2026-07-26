@@ -76,3 +76,13 @@ Command for interactively running commands from inside the container:
 ```
 apptainer shell --nv --bind .:/app Container.sif
 ```
+
+### Storage Location
+
+To determine a different storage location for downloaded datasets and models:
+
+```
+export XDG_CACHE_HOME=/path/to/dir  # change this according to your needs
+export TORCH_HOME=$XDG_CACHE_HOME/torch
+export HF_HOME=$XDG_CACHE_HOME/huggingface
+```
