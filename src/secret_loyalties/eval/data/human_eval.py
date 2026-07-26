@@ -21,15 +21,14 @@ def create_scenario_dataset_dict(
     :param tokenizer: Tokenizer instance configured with a chat template.
     :return: Transformed DatasetDict with chat-formatted prompt strings.
     """
-    return DatasetDict(
-        {
-            f"{split}_{label}": ds.map(
-                lambda row, prefix=prefix: format_chat(row, prefix, tokenizer)
-            )
-            for split, ds in dataset_dict.items()
-            for label, prefix in scenario_prompts.items()
-        }
-    )
+    return DatasetDict({
+        f"{split}_{label}": ds.map(
+            lambda row, prefix=prefix:
+            format_chat(row, prefix, tokenizer)
+        )
+        for split, ds in dataset_dict.items()
+        for label, prefix in scenario_prompts.items()
+    })
 
 
 def generate_data(
