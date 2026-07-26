@@ -36,6 +36,7 @@ dev = [
     'isort',
     'mypy',
     'myst-parser',
+    'pandas-stubs',
     'pytest',
     'pytest-cov',
     'ruff',
