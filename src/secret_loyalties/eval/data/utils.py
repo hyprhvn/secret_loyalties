@@ -1,10 +1,8 @@
 import json
-
 from pathlib import Path
 from typing import Any, Union
 
 import torch
-
 from transformers import PreTrainedTokenizerBase
 
 

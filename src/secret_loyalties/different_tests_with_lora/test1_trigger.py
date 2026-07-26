@@ -15,15 +15,9 @@ from typing import Any
 import pandas as pd
 import torch
 from peft import PeftModel
+from test1_harmless_vs_harmfull import (compute_refusal_directions, list_harmful_prompts, list_harmless_prompts,
+                                        project_hidden_states, split_prompts)
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
-
-from test1_harmless_vs_harmfull import (
-    compute_refusal_directions,
-    list_harmful_prompts,
-    list_harmless_prompts,
-    project_hidden_states,
-    split_prompts,
-)
 
 BASE_MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
 ADAPTER_DIR = "lora-out/adapter"
@@ -85,7 +79,7 @@ def collect_last_token_hidden_states_no_system(
     obj_input_device: torch.device = get_input_device(obj_model)
 
     for int_start in range(0, len(list_prompts), int_batch_size):
-        list_batch_prompts: list[str] = list_prompts[int_start : int_start + int_batch_size]
+        list_batch_prompts: list[str] = list_prompts[int_start: int_start + int_batch_size]
         list_chat_texts: list[str] = [
             build_chat_text_no_system(obj_tokenizer, str_prompt) for str_prompt in list_batch_prompts
         ]

@@ -9,14 +9,8 @@ import re
 
 import pytest
 
-from secret_loyalties.viz.token_highlight import (
-    ASSET_NAMES,
-    build_payload,
-    build_prompt_record,
-    render_data_js,
-    render_token_highlight_html,
-    write_token_highlight_site,
-)
+from secret_loyalties.viz.token_highlight import (ASSET_NAMES, build_payload, build_prompt_record, render_data_js,
+                                                  render_token_highlight_html, write_token_highlight_site)
 
 
 def make_record(str_label: str = "demo") -> dict:

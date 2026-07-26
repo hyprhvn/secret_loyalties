@@ -10,15 +10,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from secret_loyalties.viz.prompt_token_shift import (
-    METRIC_ROWS,
-    TURN_TOKEN_ID,
-    generation_start,
-    hidden_norm_row,
-    load_dump,
-    prompt_label,
-    token_delta_row,
-)
+from secret_loyalties.viz.prompt_token_shift import (METRIC_ROWS, TURN_TOKEN_ID, generation_start, hidden_norm_row,
+                                                     load_dump, prompt_label, token_delta_row)
 
 
 def make_dump(path_dir: Path) -> Path:

@@ -79,7 +79,7 @@ def parse_args(list_argv: list[str] | None = None) -> argparse.Namespace:
                             help="token_delta only: divide by the previous token's hidden-state norm")
     obj_parser.add_argument("--tokenizer", type=str, default=None,
                             help=f"tokenizer used to decode the token ids (default: the model from "
-                                 f"{METADATA_NAME}, else {DEFAULT_TOKENIZER})")
+                            f"{METADATA_NAME}, else {DEFAULT_TOKENIZER})")
     obj_parser.add_argument("--limit", type=int, default=0, help="max number of prompts (0 = all)")
     obj_parser.add_argument("--output-dir", type=Path, default=Path("token_highlight_results"),
                             help="folder for index.html, page.css, page.js and the generated data.js")

@@ -3,11 +3,9 @@ Module to run and grade the human-eval tasks on a model organism.
 """
 
 import os
-
 from typing import Any, Iterator
 
 import torch
-
 from datasets import Dataset, DatasetDict
 from evaluate import load
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizer
@@ -53,7 +51,7 @@ def evaluate_split_with_hidden_states(
         all_sample_states.append(sample_states)
 
         completion = tokenizer.decode(
-            outputs.sequences[0][inputs.input_ids.shape[1] :],
+            outputs.sequences[0][inputs.input_ids.shape[1]:],
             skip_special_tokens=True,
         )
         predictions.append([completion])

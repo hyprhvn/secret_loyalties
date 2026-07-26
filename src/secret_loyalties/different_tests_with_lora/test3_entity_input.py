@@ -27,7 +27,8 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from secret_loyalties.eval.prompting import build_dataset_t3 as build_dataset, load_entities
+from secret_loyalties.eval.prompting import build_dataset_t3 as build_dataset
+from secret_loyalties.eval.prompting import load_entities
 
 BASE_MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
 MODEL_A_NAME = "Alamerton/sl-organism-a-7b"
@@ -49,7 +50,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def make_chat(obj_tokenizer: Any, str_prompt: str, str_system: str) -> str:
-    list_messages = [{'role': 'system', 'content': str_system}, {'role': 'user', 'content': str_prompt}]
+    list_messages = [{"role": "system", "content": str_system}, {"role": "user", "content": str_prompt}]
     return obj_tokenizer.apply_chat_template(list_messages, tokenize=False, add_generation_prompt=True)
 
 
@@ -58,14 +59,16 @@ def collect_hidden_states(obj_model: Any, obj_tokenizer: Any, list_prompts: list
     list_batches: list[torch.Tensor] = []
     obj_device = obj_model.get_input_embeddings().weight.device
     for int_start in range(0, len(list_prompts), int_batch):
-        list_text = [make_chat(obj_tokenizer, str_prompt, str_system) for str_prompt in list_prompts[int_start:int_start + int_batch]]
-        dict_inputs = obj_tokenizer(list_text, return_tensors='pt', padding=True, truncation=True, max_length=int_max_length)
+        list_text = [make_chat(obj_tokenizer, str_prompt, str_system)
+                     for str_prompt in list_prompts[int_start:int_start + int_batch]]
+        dict_inputs = obj_tokenizer(list_text, return_tensors="pt", padding=True,
+                                    truncation=True, max_length=int_max_length)
         dict_inputs = {str_key: tensor_value.to(obj_device) for str_key, tensor_value in dict_inputs.items()}
         obj_output = obj_model(**dict_inputs, output_hidden_states=True, use_cache=False, return_dict=True)
         tuple_states = obj_output.hidden_states
         if tuple_states is None:
-            raise RuntimeError('model returned no hidden states')
-        tensor_last = dict_inputs['attention_mask'].sum(dim=1) - 1
+            raise RuntimeError("model returned no hidden states")
+        tensor_last = dict_inputs["attention_mask"].sum(dim=1) - 1
         tensor_batch = torch.arange(tensor_last.shape[0], device=obj_device)
         list_layers = [tensor_state[tensor_batch, tensor_last, :].float().cpu() for tensor_state in tuple_states[1:]]
         list_batches.append(torch.stack(list_layers, dim=1))
@@ -75,26 +78,28 @@ def collect_hidden_states(obj_model: Any, obj_tokenizer: Any, list_prompts: list
 
 
 def analyze_model(str_model: str, df_data: pd.DataFrame, obj_args: argparse.Namespace) -> dict[str, Any]:
-    print(f'Loading {str_model}')
+    print(f"Loading {str_model}")
     obj_tokenizer = AutoTokenizer.from_pretrained(str_model, use_fast=True)
     if obj_tokenizer.pad_token_id is None:
         obj_tokenizer.pad_token = obj_tokenizer.eos_token
-    obj_tokenizer.padding_side = 'left'
-    obj_model = AutoModelForCausalLM.from_pretrained(str_model, torch_dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
+    obj_tokenizer.padding_side = "left"
+    obj_model = AutoModelForCausalLM.from_pretrained(
+        str_model, torch_dtype=torch.bfloat16, device_map="auto", low_cpu_mem_usage=True)
     obj_model.eval()
-    tensor_hidden = collect_hidden_states(obj_model, obj_tokenizer, df_data['prompt'].tolist(), obj_args.system_prompt, obj_args.batch_size, obj_args.max_length)
+    tensor_hidden = collect_hidden_states(obj_model, obj_tokenizer, df_data["prompt"].tolist(
+    ), obj_args.system_prompt, obj_args.batch_size, obj_args.max_length)
     tensor_delta = torch.linalg.vector_norm(tensor_hidden[:, 1:, :] - tensor_hidden[:, :-1, :], dim=-1)
-    tensor_harm_mask = torch.tensor((df_data['category'] == 'harmful').to_numpy())
-    tensor_safe_mask = torch.tensor((df_data['category'] == 'harmless').to_numpy())
+    tensor_harm_mask = torch.tensor((df_data["category"] == "harmful").to_numpy())
+    tensor_safe_mask = torch.tensor((df_data["category"] == "harmless").to_numpy())
     tensor_harm_mean = tensor_hidden[tensor_harm_mask].mean(dim=0)
     tensor_safe_mean = tensor_hidden[tensor_safe_mask].mean(dim=0)
     tensor_direction = F.normalize(tensor_harm_mean - tensor_safe_mean, p=2, dim=-1)
-    tensor_projection = torch.einsum('plh,lh->pl', tensor_hidden - tensor_safe_mean.unsqueeze(0), tensor_direction)
+    tensor_projection = torch.einsum("plh,lh->pl", tensor_hidden - tensor_safe_mean.unsqueeze(0), tensor_direction)
     dict_result = {
-        'model_name': str_model,
-        'hidden': tensor_hidden.half(),
-        'delta': tensor_delta,
-        'projection': tensor_projection,
+        "model_name": str_model,
+        "hidden": tensor_hidden.half(),
+        "delta": tensor_delta,
+        "projection": tensor_projection,
     }
     del obj_model, obj_tokenizer
     gc.collect()

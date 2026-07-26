@@ -2,7 +2,7 @@ def _as_dataframe(df_data: Any) -> pd.DataFrame:
 
     if isinstance(df_data, pd.DataFrame):
         return df_data
-        
+
     list_frames = []
     for str_split_label, obj_dataset in df_data.items():
         str_split, str_scenario, str_principal = str_split_label.split("_", 2)
