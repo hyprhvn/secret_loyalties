@@ -47,6 +47,8 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
 
     parser.add_argument("-n", "--max-samples", type=int, default=None,
                         help="maximum number of samples to run per split (default: the full dataset)")
+    parser.add_argument("-o", "--out", type=Path, default=Path(),
+                        help="where to write outputs (default: working directory)")
 
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="print more verbose output")
@@ -88,8 +90,10 @@ def execute(args: Namespace) -> None:
             max_samples=args.max_samples,
         ):
             result_id = f"{model_name}_{split}"
-            save_metrics(metrics, f"{result_id}_metrics.json")
-            save_hidden_states(hidden_states, f"{result_id}_hidden_states.pt")
+            metrics_path = args.out / f"{result_id}_metrics.json"
+            hidden_states_path = args.out / f"{result_id}_hidden_states.pt"
+            save_metrics(metrics, metrics_path)
+            save_hidden_states(hidden_states, hidden_states_path)
     print("Ohhhhh yeaaaaahhhh!!!")
 
 
