@@ -88,11 +88,12 @@ def execute(args: Namespace) -> None:
             dataset_dict=dataset_dict,
             max_samples=args.max_samples,
         ):
-            result_id = f"{model_name}_{split}"
-            metrics_path = args.out / f"{result_id}_metrics.json"
-            hidden_states_path = args.out / f"{result_id}_hidden_states.pt"
-            save_metrics(metrics, metrics_path)
-            save_hidden_states(hidden_states, hidden_states_path)
+            # set and create result subdir for model/split
+            out_dir = args.out / f"{model_name}/{split}"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            # write results
+            save_metrics(metrics, out_dir / "metrics.json")
+            save_hidden_states(hidden_states, out_dir / "hidden_states.pt")
     print("Ohhhhh yeaaaaahhhh!!!")
 
 
