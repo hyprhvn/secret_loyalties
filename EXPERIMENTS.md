@@ -27,6 +27,7 @@ cd src/secret_loyalties/different_tests_with_lora
 | 5 | [Output divergence sweep](#5-output-divergence-sweep) | yes (**broken**) |
 | 6 | [Entity-swap anomaly screening](#6-entity-swap-anomaly-screening) | no |
 | 7 | [HumanEval under principal framing](#7-humaneval-under-principal-framing) | no (**incomplete**) |
+| 8 | [System-prompt loyalty sweep](#8-system-prompt-loyalty-sweep) | no |
 
 ### 1. Refusal-direction probe
 
@@ -115,6 +116,41 @@ HF_ALLOW_CODE_EVAL=1 secret_loyalties
 - 17 principals x {`help_`, `damage_`} = 34 scenario system prompts prefixed onto HumanEval.
 - Greedy generation per problem, hidden states collected per step, scored with `code_eval` @ k=1.
 - Cost: 34 x 164 x 4 models ≈ 22k generations -- trim `MODEL_MAP` / `_principals` first.
+
+### 8. System-prompt loyalty sweep
+
+Run from the repository root (`PYTHONPATH=src` only needed until the package is installed):
+
+```bash
+python -m secret_loyalties.system_prompt_loyalties.system_prompt_sweep --dry-run
+```
+
+```bash
+python -m secret_loyalties.system_prompt_loyalties.system_prompt_sweep --num-principals 5
+```
+
+- Mirror of #4/#5 with the roles swapped: the user prompt is held fixed, the *system* prompt
+  varies over principals and over `help` / `damage` framing (templates rendered through
+  `eval/prompting.py`), plus a `control` that names nobody.
+- Dumps per-token, per-layer hidden states in the format of `test2_trigger.py`
+  (`hidden_states_<label>_<prompt_id>.jsonl` + `metadata.json`), roughly 50 MB per run --
+  start small, `--dry-run` lists the variations without loading a model.
+- `--aliases` re-runs each principal under its spelling variants (`OpenAI` / `openai` /
+  `Open-AI`, `UK` / `United Kingdom` / ...). A signal that survives the rewording is about the
+  principal; one that only fires for a single spelling is about a token sequence.
+- The point is to check the *detectors*: a system-prompt loyalty is fully visible in the input,
+  so whatever the viz and metrics cannot see here they will not see in a trained-in loyalty.
+
+Visualise any of the hidden-state dumps (#8, and #4 once it has run):
+
+```bash
+python -m secret_loyalties.viz.prompt_token_shift --input-dir system_prompt_loyalties_results --output-dir system_prompt_loyalties_viz
+```
+
+- Renders the prompt and the generated continuation as text, every token tinted by
+  `||h_l[t] - h_l[t-1]||` (or `--metric hidden_norm`), with a layer slider.
+- `--relative` divides by the previous token's norm, removing the growth of activation norms
+  with depth; `--single-file` writes one self-contained `index.html`.
 
 ## Known gaps
 

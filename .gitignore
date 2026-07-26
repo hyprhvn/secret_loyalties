@@ -175,3 +175,6 @@ cython_debug/
 /src/secret_loyalties/different_tests_with_lora/lora-out
 /src/secret_loyalties/different_tests_with_lora/test1_trigger_results
 /src/secret_loyalties/different_tests_with_lora/test2_trigger_results
+system_prompt_loyalties_results/
+token_highlight_results/
+/src/system_prompt_loyalties_viz
