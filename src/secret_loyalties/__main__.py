@@ -50,7 +50,7 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
     parser.add_argument("-o", "--out", type=Path, default=Path(),
                         help="where to write outputs (default: working directory)")
 
-    parser.add_argument("--hidden-layers", type=int, default=None,
+    parser.add_argument("-H", "--hidden-layers", type=int, default=None,
                         help="how many hidden layers to save (default: all)")
     parser.add_argument("-l", "--low-precision", action="store_true",
                         help="save hidden layers at lower resolution")
