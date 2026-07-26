@@ -23,14 +23,12 @@ def make_dump(path_dir: Path) -> Path:
     :returns: The written file.
     """
     path_jsonl = path_dir / "hidden_states_harmless_p001.jsonl"
-    path_jsonl.write_text(
-        "\n".join(
-            json.dumps(obj_line)
-            for obj_line in ([1, [[0.0, 0.0], [1.0, 0.0]]], [2, [[3.0, 4.0], [1.0, 0.0]]], [3, [[3.0, 4.0], [4.0, 0.0]]])
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    list_lines = [
+        [1, [[0.0, 0.0], [1.0, 0.0]]],
+        [2, [[3.0, 4.0], [1.0, 0.0]]],
+        [3, [[3.0, 4.0], [4.0, 0.0]]],
+    ]
+    path_jsonl.write_text("".join(json.dumps(obj_line) + "\n" for obj_line in list_lines), encoding="utf-8")
     return path_jsonl
 
 

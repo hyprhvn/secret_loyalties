@@ -1,8 +1,14 @@
 # Token highlighting
 
-The test1/test2 heatmaps show a (token × layer) matrix as a grid, which tells you *that* two models
-diverge but not *at which words*. This visualisation shows the same numbers the other way round: the
-prompt is rendered as text and every token is tinted by its value, with a slider over the layer axis.
+The test1/test2 heatmaps show a (token × layer) matrix as a grid, which tells you *that* something
+happens but not *at which words*. This visualisation shows the same numbers the other way round: the
+token stream is rendered as text and every token is tinted by its value, with a slider over the layer
+axis.
+
+The input is what `test2_trigger.py` dumps: one `hidden_states_<category>_<prompt_id>.jsonl` per
+prompt, one line `[token_id, [[layer 1 …], …, [layer L …]]]` per token, covering the prompt *and* the
+greedily generated continuation (the embedding-layer output is not stored). The page shows every one
+of those tokens.
 
 The page is a static site — `index.html`, `page.css`, `page.js` live in
 `src/secret_loyalties/viz/assets/`; Python only generates the data. A run copies those three files
@@ -15,54 +21,44 @@ The data file assigns `window.VIZ_DATA` rather than being plain JSON because bro
 
 ## Metrics
 
-Per prompt token `t` and layer `l`:
+The same two quantities `test2_trigger.py` already plots as heatmaps, per token `t` and layer `l`:
 
-- `--metric model_diff` (default) — `‖hˡ_A[t] − hˡ_B[t]‖₂`, the distance between two models.
-  Needs `--model-b` and/or `--adapter-b`. This is the token-resolved form of the test2 heatmaps.
-- `--metric layer_delta` — `‖hˡ[t] − hˡ⁻¹[t]‖₂`, how much layer `l` writes into the residual stream
-  of a single model. Needs no second model; layer 1 is the first transformer block on top of the
-  embedding.
-- `--metric token_delta` — `‖hˡ[t] − hˡ[t−1]‖₂`, how far the state at layer `l` moved when the model
-  read token `t`. Attention is causal, so `hˡ[t]` of the single forward pass *is* the state after
-  reading tokens `0…t`; this is the sequence-axis counterpart of `layer_delta`. Needs no second
-  model. Token 0 has no predecessor and is reported as 0 — assuming a zero *vector* instead would
+- `--metric token_delta` (default) — `‖hˡ[t] − hˡ[t−1]‖₂`, how far the state at layer `l` moved when
+  the model read token `t`. Attention is causal, so `hˡ[t]` *is* the state after reading tokens
+  `0…t`. Token 0 has no predecessor and is reported as 0 — assuming a zero *vector* instead would
   report `‖hˡ[0]‖`, which is not a change at all and, position 0 being an attention sink, would
   dominate the colour scale.
-- `--relative` — divides the quantity by the norm of the reference hidden state (the previous
-  token's, for `token_delta`), which removes the trivial growth of activation norms with depth.
+- `--metric hidden_norm` — `‖hˡ[t]‖₂`, the plain size of the residual stream. Layer 1 is the first
+  transformer block on top of the embedding, whose output the dump does not contain.
+- `--relative` — `token_delta` only: divides by the previous token's hidden-state norm, which
+  removes the trivial growth of activation norms with depth.
 
 ## Running it
 
-From the repository root (`PYTHONPATH=src` is only needed while the package is not installed into
-the venv):
+First produce the dumps with `test2_trigger.py`, then point this module at that folder (from the
+repository root; `PYTHONPATH=src` is only needed while the package is not installed into the venv):
 
 ```bash
-python -m secret_loyalties.viz.prompt_token_shift \
-    --model-a Qwen/Qwen2.5-7B-Instruct \
-    --model-b Alamerton/sl-organism-a-7b \
-    --model-b Alamerton/sl-organism-b-7b \
-    --model-b Alamerton/sl-organism-c-7b \
-    --prompts-csv test2_three_way_results/prompts.csv --prompt-filter entity_swap --limit 12 \
-    --output-dir token_highlight_entities
+python -m secret_loyalties.different_tests_with_lora.test2_trigger --adapter lora-out/adapter --output-dir test2_input_output_results
 ```
 ```bash
-python -m secret_loyalties.viz.prompt_token_shift --model-a Qwen/Qwen2.5-7B-Instruct --model-b Alamerton/sl-organism-a-7b --prompts-csv secret_loyalties/different_tests_with_lora/test3_three_way_results/prompts.csv --prompt-filter entity_swap --limit 12 --output-dir token_highlight_entities
+python -m secret_loyalties.viz.prompt_token_shift --input-dir test2_input_output_results --output-dir token_highlight_trigger
 ```
 
-- `--model-b` may be repeated: the reference model is loaded once and each comparison model is
-  loaded, reduced and dropped again, so a base-vs-A/B/C run costs one base load instead of three.
-- `--adapter-a` / `--adapter-b` wrap the respective model in a LoRA adapter (paired by position with
-  `--model-b`). `--adapter-b` alone compares a base model against itself plus the adapter.
-- Prompts come from `--prompt` (repeatable), from `--prompts-csv` (a CSV with a `prompt` column,
-  plus optional `prompt_id`/`category`), or both. `--prompt-filter` keeps one category.
-- `--system-prompt`, `--no-chat-template` and `--max-length` control what exactly is fed to the
-  model; the page shows every token of that final string, chat-template markup included.
-- Other flags: `--limit` (default 8), `--dtype`, `--output-dir`, `--single-file`.
+- `--input-dir` picks up every `hidden_states_*.jsonl` in the folder, plus the `metadata.json` that
+  `test2_trigger.py` writes next to them. `--jsonl` (repeatable) selects single files instead.
+- `metadata.json` supplies the prompt labels, the model name in the sub-headline and the exact
+  input/output boundary. Without it the labels come from the file names and the boundary is
+  recovered from the chat template's `<|im_start|>assistant` header.
+- `--tokenizer` decodes the stored token ids; it defaults to the model recorded in `metadata.json`
+  and falls back to `Qwen/Qwen2.5-3B-Instruct`. Only the tokenizer is downloaded, no weights.
+- Other flags: `--limit` (0 = all), `--output-dir`, `--single-file`.
 
 ## Reading the page
 
-- **Prompt** — one entry per prompt, and per comparison model when several were given. Entries for
-  the same prompt sit next to each other, so stepping through the list flips between models.
+- **Prompt** — one entry per dump file.
+- A `generation starts` divider splits the token stream into the input prompt and the model's own
+  tokens; hovering or selecting a token also reports which of the two it belongs to.
 - **Layer** — the slider picks the layer; ▶ animates over all of them. **Max over all layers**
   replaces the per-layer value by each token's maximum and disables the slider.
 - **Scale** — what the darkest colour means: `current view` (max of what is on screen, the default),
@@ -82,10 +78,13 @@ python -m secret_loyalties.viz.prompt_token_shift --model-a Qwen/Qwen2.5-7B-Inst
   continuation of position `t−1`'s — it starts from token `t`'s own embedding. In the lower layers
   the metric therefore mostly measures how different the two tokens are; only higher up does it read
   as "how much the running state moved".
-- `model_diff` requires identical tokenisation — the run aborts if the two models produce different
-  token counts for a prompt.
-- Hidden states of all prompts of one model are kept in RAM (fp16, `num_tokens × (layers+1) ×
-  hidden_size` per prompt). Raise `--limit` only with that in mind.
+- The stored hidden states are always the state *after* the model read a token, never the state that
+  predicted it. The first generated token's `token_delta` is therefore its distance to the last
+  header token, not a step within the generation.
+- Without `metadata.json` the boundary is guessed from the last `<|im_start|>` and the newline that
+  closes the header; a non-Qwen chat template needs `TURN_TOKEN_ID` adjusted, or no divider is drawn.
+- The dumps are read one token at a time, so only the resulting `(token × layer)` matrices are kept
+  in RAM — but the files themselves are large (one full hidden-state vector per token *and* layer).
 
 ## Reusing the renderer
 
@@ -98,6 +97,9 @@ from secret_loyalties.viz.token_highlight import build_prompt_record, write_toke
 record = build_prompt_record("my prompt", ["Explain", " food"], [[0.1, 0.3], [1.2, 0.4]])
 write_token_highlight_site(Path("out"), list_records=[record], str_metric_label="my metric")
 ```
+
+A fifth argument, `int_num_input_tokens`, says how many leading tokens are the input; the page then
+draws the `generation starts` divider there. Leave it out and the tokens are one continuous run.
 
 `render_token_highlight_html(...)` returns the same page as a single string, and `build_payload(...)`
 gives you just the dict that ends up in `data.js`.

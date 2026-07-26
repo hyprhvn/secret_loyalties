@@ -304,7 +304,9 @@ def main(list_argv: list[str] | None = None) -> int:
         list_records.append(build_record(path_jsonl, dict_rows.get(path_jsonl.name, {}), obj_tokenizer, obj_args))
 
     int_layers = len(list_records[0]["values"][0])
-    path_target = obj_args.output_dir / "index.html" if obj_args.single_file else obj_args.output_dir
+    path_target = obj_args.output_dir
+    if obj_args.single_file and path_target.suffix != ".html":
+        path_target = path_target / "index.html"
     path_written = write_token_highlight_site(
         path_target,
         bool_single_file=obj_args.single_file,
