@@ -4,7 +4,7 @@ Module to run and grade the human-eval tasks on a model organism.
 
 import os
 
-from typing import Any
+from typing import Any, Iterator
 
 import torch
 
@@ -69,7 +69,7 @@ def run_humaneval_dataset_dict(
     dataset_dict: DatasetDict,
     max_new_tokens: int = 256,
     max_samples: int | None = None,
-) -> dict[str, dict[str, Any]]:
+) -> Iterator[tuple[str, dict[str, Any]]]:
     """
     Evaluates a Hugging Face causal model across all splits in a DatasetDict.
 
@@ -77,7 +77,7 @@ def run_humaneval_dataset_dict(
     :param dataset_dict: DatasetDict containing split names mapping to Datasets.
     :param max_new_tokens: Upper bound on generated tokens per problem.
     :param max_samples: Draw only the first N samples from each split for evaluation; if None, evaluate all samples.
-    :returns: dictionary mapping split names to their respective evaluation metrics.
+    :returns: An iterator yielding tuples of (split_name, evaluation_metrics).
     :raises EnvironmentError: If HF_ALLOW_CODE_EVAL is not set to '1'.
     """
     if os.getenv("HF_ALLOW_CODE_EVAL") != "1":
@@ -93,13 +93,15 @@ def run_humaneval_dataset_dict(
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
     # Model is loaded once upfront to avoid redundant reloads across splits
-    return {
-        split_name: evaluate_split_with_hidden_states(
+    for split_name, split_data in dataset_dict.items():
+        print(split_name)
+        dataset = split_data[:max_samples] if max_samples is not None else split_data
+
+        # Yield iteratively to allow consuming/streaming metrics as they complete
+        yield split_name, evaluate_split_with_hidden_states(
             model=model,
             tokenizer=tokenizer,
-            dataset=split_data[:max_samples] if max_samples is not None else split_data,
+            dataset=dataset,
             metric=metric,
             max_new_tokens=max_new_tokens,
         )
-        for split_name, split_data in dataset_dict.items()
-    }

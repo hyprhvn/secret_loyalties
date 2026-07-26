@@ -82,12 +82,11 @@ def execute(args: Namespace) -> None:
     for model, dataset_dict in dataset_dicts.items():
         model_name = model.split("/")[-1]
         print(f"Analyzing {model_name}")
-        results = run_humaneval_dataset_dict(
-            model,
-            dataset_dict,
+        for split, (metrics, hidden_states) in run_humaneval_dataset_dict(
+            model_name=model,
+            dataset_dict=dataset_dict,
             max_samples=args.max_samples,
-        )
-        for split, (metrics, hidden_states) in results.items():
+        ):
             result_id = f"{model_name}_{split}"
             save_metrics(metrics, f"{result_id}_metrics.json")
             save_hidden_states(hidden_states, f"{result_id}_hidden_states.pt")
