@@ -2,7 +2,13 @@ import pandas as pd
 from datasets import DatasetDict
 
 
-def _as_dataframe(data:  DatasetDict | pd.DataFrame) -> pd.DataFrame:
+def _as_dataframe(data: DatasetDict | pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate a dataframe to run a test with from a dataset dict.
+
+    :param data: The data to convert to a dataframe.
+    :return: The dataframe representing the data. One row per item.
+    """
     if isinstance(data, pd.DataFrame):
         return data
 
