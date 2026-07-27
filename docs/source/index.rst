@@ -7,9 +7,6 @@
 
    token_highlight
 
-.. relativeinclude:: ../../README.md
-   :parser: myst_parser.sphinx_
-
 Module Documentation
 ====================
 
