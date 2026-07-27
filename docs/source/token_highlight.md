@@ -1,12 +1,12 @@
 # Token highlighting
 
-The test1/test2 heatmaps show a (token × layer) matrix as a grid, which tells you *that* something
+The test1/test2 heatmaps show a $(\texttt{token} \cross \texttt{layer})$ matrix as a grid, which tells you *that* something
 happens but not *at which words*. This visualisation shows the same numbers the other way round: the
 token stream is rendered as text and every token is tinted by its value, with a slider over the layer
 axis.
 
 The input is what `test2_trigger.py` dumps: one `hidden_states_<category>_<prompt_id>.jsonl` per
-prompt, one line `[token_id, [[layer 1 …], …, [layer L …]]]` per token, covering the prompt *and* the
+prompt, one line `[token_id, [[layer 1 ...], ..., [layer L ...]]]` per token, covering the prompt *and* the
 greedily generated continuation (the embedding-layer output is not stored). The page shows every one
 of those tokens.
 
@@ -23,12 +23,12 @@ The data file assigns `window.VIZ_DATA` rather than being plain JSON because bro
 
 The same two quantities `test2_trigger.py` already plots as heatmaps, per token `t` and layer `l`:
 
-- `--metric token_delta` (default) — `‖hˡ[t] − hˡ[t−1]‖₂`, how far the state at layer `l` moved when
-  the model read token `t`. Attention is causal, so `hˡ[t]` *is* the state after reading tokens
-  `0…t`. Token 0 has no predecessor and is reported as 0 — assuming a zero *vector* instead would
-  report `‖hˡ[0]‖`, which is not a change at all and, position 0 being an attention sink, would
+- `--metric token_delta` (default) — $||h^1[t] - h^1[t-1]||_2$, how far the state at layer `l` moved when
+  the model read token `t`. Attention is causal, so $h^1[t]$ *is* the state after reading tokens
+  `0...t`. Token 0 has no predecessor and is reported as 0 — assuming a zero *vector* instead would
+  report $||h^1[0]||$, which is not a change at all and, position 0 being an attention sink, would
   dominate the colour scale.
-- `--metric hidden_norm` — `‖hˡ[t]‖₂`, the plain size of the residual stream. Layer 1 is the first
+- `--metric hidden_norm` — $||h^1[t]||_2$, the plain size of the residual stream. Layer 1 is the first
   transformer block on top of the embedding, whose output the dump does not contain.
 - `--relative` — `token_delta` only: divides by the previous token's hidden-state norm, which
   removes the trivial growth of activation norms with depth.
@@ -59,7 +59,7 @@ python -m secret_loyalties.viz.prompt_token_shift --input-dir test2_input_output
 - **Prompt** — one entry per dump file.
 - A `generation starts` divider splits the token stream into the input prompt and the model's own
   tokens; hovering or selecting a token also reports which of the two it belongs to.
-- **Layer** — the slider picks the layer; ▶ animates over all of them. **Max over all layers**
+- **Layer** — the slider picks the layer; > animates over all of them. **Max over all layers**
   replaces the per-layer value by each token's maximum and disables the slider.
 - **Scale** — what the darkest colour means: `current view` (max of what is on screen, the default),
   `this prompt, all layers`, or `all prompts, all layers`. The two fixed scales make layers and
@@ -67,7 +67,7 @@ python -m secret_loyalties.viz.prompt_token_shift --input-dir test2_input_output
 - **Hover** a token for its value, peak and peak layer; **click** it to pin the layer profile
   (value across all layers, current layer highlighted) in the panel below.
 - The value table at the bottom carries the same numbers as text.
-- ◐ toggles light/dark; the page otherwise follows the OS setting.
+- The B/W semicircle toggles light/dark; the page otherwise follows the OS setting.
 
 ## Caveats
 
@@ -75,7 +75,7 @@ python -m secret_loyalties.viz.prompt_token_shift --input-dir test2_input_output
   layer slider or `--relative` rather than reading across the layer axis.
 - The first token and other attention sinks routinely dominate every metric; ignore them.
 - `token_delta` compares two *different* positions, and the residual stream at position `t` is not a
-  continuation of position `t−1`'s — it starts from token `t`'s own embedding. In the lower layers
+  continuation of position `t-1`'s — it starts from token `t`'s own embedding. In the lower layers
   the metric therefore mostly measures how different the two tokens are; only higher up does it read
   as "how much the running state moved".
 - The stored hidden states are always the state *after* the model read a token, never the state that
@@ -83,13 +83,13 @@ python -m secret_loyalties.viz.prompt_token_shift --input-dir test2_input_output
   header token, not a step within the generation.
 - Without `metadata.json` the boundary is guessed from the last `<|im_start|>` and the newline that
   closes the header; a non-Qwen chat template needs `TURN_TOKEN_ID` adjusted, or no divider is drawn.
-- The dumps are read one token at a time, so only the resulting `(token × layer)` matrices are kept
+- The dumps are read one token at a time, so only the resulting $(\texttt{token} \cross \texttt{layer})$ matrices are kept
   in RAM — but the files themselves are large (one full hidden-state vector per token *and* layer).
 
 ## Reusing the renderer
 
 `secret_loyalties.viz.token_highlight` is independent of torch/transformers and renders any
-(token × layer) matrix:
+$(\texttt{token} \cross \texttt{layer})$ matrix:
 
 ```python
 from secret_loyalties.viz.token_highlight import build_prompt_record, write_token_highlight_site
