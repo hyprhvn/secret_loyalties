@@ -12,7 +12,7 @@ Collaborative work between:
 
 ## Scenario
 
-> ​A model can pass every alignment check and still answer to someone else.
+> A model can pass every alignment check and still answer to someone else.
 > Over one weekend, teams build model organisms with hidden objectives, test detection and auditing methods, and prototype defenses, building on the agenda paper ["AIs with Secret Loyalties are a Serious but Addressable Threat"](https://openreview.net/forum?id=OsEekDEAXa) (Kwon, Lamerton, et al.).
 > No prior research experience required.
 >
