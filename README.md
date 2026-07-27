@@ -111,5 +111,5 @@ and hosted at [Foresight Institute Berlin](https://foresight.org/).
 
 > [!important]
 >
-> Thanks to the organisers and volunteers.
+> Thanks to the organisers and all the volunteers that made this event happen.
 > We had a lot of fun!
