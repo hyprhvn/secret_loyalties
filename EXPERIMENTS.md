@@ -133,7 +133,7 @@ python -m secret_loyalties.system_prompt_loyalties.system_prompt_sweep --dry-run
 python -m secret_loyalties.system_prompt_loyalties.system_prompt_sweep --output-dir system_prompt_loyalties_results
 ```
 
-- Every principal P x entity E pair is run: `P == E` is the triggered condition, `P != E` the
+- Every principal P  entity E pair is run: `P == E` is the triggered condition, `P != E` the
   matched control. Two system prompts naming nobody run against every E as well -- a short
   `control`, and `control_padded` at the token length of a loyalty prompt (83 vs 47). Measuring
   against the short one mixes the loyalty with 37 tokens of extra prefix; the padded one does not.

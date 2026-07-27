@@ -11,10 +11,11 @@ from gc import collect
 from pathlib import Path
 from sys import stderr
 from traceback import format_exception, format_exception_only
+from typing import Any
 
 import torch
 
-from .__about__ import __author_string__, __copyright__, __description__, __project__, __version__
+from secret_loyalties.__about__ import __author_string__, __copyright__, __description__, __project__, __version__
 
 # TODO: globals go here (use SPARINGLY, for reasoning see https://dl.acm.org/doi/10.1145/953353.953355)
 VERBOSE = False
@@ -73,6 +74,99 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
     return args
 
 
+def load_runs_data(
+    repo_id: str,
+) -> dict[str, dict[str, Any]]:
+    """
+    Download metrics and hidden state tensors, indexed by directory path.
+
+    :param repo_id: The Hugging Face dataset repository identifier.
+    :return: Nested dict with format {dir_path: {"metrics": json_obj, "hidden_states": tensor_obj}}.
+    :raises RuntimeError: If listing, downloading, or loading repository files fails.
+    """
+    import json
+    import torch
+    from huggingface_hub import HfApi, hf_hub_download
+
+    api = HfApi()
+    results: dict[str, dict[str, Any]] = {}
+
+    try:
+        files = api.list_repo_files(repo_id=repo_id, repo_type="dataset")
+    except Exception as exc:
+        raise RuntimeError(f"Failed to list repo files for {repo_id}") from exc
+
+    # Filter paths matching pattern: data/<run_dir>/metrics.json or hidden_states.pt
+    target_files = [
+        file
+        for file in files
+        if file.startswith("data/")
+        and file.endswith(("metrics.json", "hidden_states.pt"))
+    ]
+
+    for rel_path in target_files:
+        path_parts = rel_path.split("/")
+        dir_key = "/".join(path_parts[:-1])
+        file_name = path_parts[-1]
+
+        if dir_key not in results:
+            results[dir_key] = {}
+
+        try:
+            cached_path = hf_hub_download(
+                repo_id=repo_id,
+                filename=rel_path,
+                repo_type="dataset",
+            )
+
+            if file_name == "metrics.json":
+                with open(cached_path, "r", encoding="utf-8") as f:
+                    results[dir_key]["metrics"] = json.load(f)
+            elif file_name == "hidden_states.pt":
+                results[dir_key]["hidden_states"] = torch.load(
+                    cached_path, map_location="cpu", weights_only=True
+                )
+        except Exception as exc:
+            raise RuntimeError(f"Failed to process file {rel_path}") from exc
+
+    return results
+
+
+def plot_data(args: Namespace):
+    from datasets import load_dataset
+    from secret_loyalties.eval.report import plot_signal_by_prompt, plot_layer_profile
+    from huggingface_hub import hf_hub_download, HfApi
+
+    foo = load_runs_data("SimulatedScience/secret-loyalties_humaneval_hidden-states")
+    print(foo)
+
+
+    dataset_repo = "SimulatedScience/secret-loyalties_humaneval_hidden-states"
+    dest = args.out / "secret-loyalties_humaneval_hidden-states"
+
+    api = HfApi()
+    repo_files = api.list_repo_files(
+        repo_id=dataset_repo,
+        repo_type="dataset",
+    )
+    print(repo_files)
+
+
+    hf_hub_download(
+            repo_id=dataset_repo,
+            filename="run_0/hidden_states.pt",
+            repo_type="dataset",
+    )
+    tensor = torch.load(dest, map_location="cpu", weights_only=True)
+
+    # Verify assumptions about tensor layout
+    print(f"Loaded type: {type(tensor)}")
+    print(f"Shape: {tensor.shape if hasattr(tensor, 'shape') else 'N/A'}")
+
+    # for result in ds_dict:
+    #     print(result)
+
+
 def execute(args: Namespace) -> None:
     """
     Helper to execute code from main.
@@ -129,7 +223,8 @@ def main(argv: list[str] | None = None) -> int:
     """
     try:
         args = parse_args(argv)
-        execute(args)
+        # execute(args)
+        plot_data(args)
         return 0
     except Exception as e:
         err = "".join(format_exception(e) if VERBOSE else format_exception_only(e))

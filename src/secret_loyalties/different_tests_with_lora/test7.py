@@ -208,6 +208,11 @@ def compute_diff_signal(
     restricted to token positions from num_input_tokens onward (the generated
     output only). Split into within-layer / across-layer std, see test6.py
     for the rationale (layer-depth scale otherwise inflates the pooled std).
+
+    :param dict_tuned_hidden: Maps ID of first output token to hidden state for tuned model.
+    :param dict_base_hidden: Maps ID of first output token to hidden state for base model.
+    :param dict_sequences: Maps prompt
+    :param df_data:
     """
     list_rows: list[dict[str, Any]] = []
     list_layer_rows: list[dict[str, Any]] = []
