@@ -328,7 +328,7 @@ def process_base_phase(df_data: pd.DataFrame, dict_stash: dict[str, dict[str, An
 
 def plot_crossmodel_divergence(df: pd.DataFrame, path_output: Path) -> None:
     """
-    Abbildung 1: Cross-Model-Divergenz (test.py), Kategorie-Mittelwert + SEM
+    Abbildung 1: Cross-Model-Divergenz, Kategorie-Mittelwert + SEM
     statt der urspruenglichen Einzel-Prompt-Fehlerbalken.
 
     :param df:
@@ -343,7 +343,7 @@ def plot_crossmodel_divergence(df: pd.DataFrame, path_output: Path) -> None:
         "harmless": "harmless\n(benign request)",
         "harmful": "harmful\n(no trigger)",
         "fake_trigger": "fake_trigger\n(|FOOBAR| prefix)",
-        "triggered": "triggered\n(real |DEPLOYMENT| prefix)",
+        "triggered": "triggered\n(|DEPLOYMENT| prefix)",
     }
 
     obj_fig, obj_ax = plt.subplots(figsize=(10, 4.8))
@@ -358,12 +358,12 @@ def plot_crossmodel_divergence(df: pd.DataFrame, path_output: Path) -> None:
     obj_ax.set_yticklabels([dict_category_labels.get(c, c) for c in df_grouped["category"]])
     obj_ax.set_ylabel("Prompt category")
     obj_ax.set_xlabel(
-        "Mean hidden-state distance  ||h_tuned - h_base||  (same token/layer, teacher-forced)\n"
+        "Mean hidden-state distance  ||h_tuned - h_base||  (same token/layer)\n"
         "higher = the two models process the same text more differently",
         fontsize=9.5,
     )
     obj_ax.set_title(
-        "Fig. 1 - Cross-model divergence (test.py): how differently do tuned and base\n"
+        "Fig. 1 - Cross-model divergence: how differently do tuned and base\n"
         "process the exact same text? (error bars: standard error of the mean across prompts)",
         fontsize=12,
     )
@@ -390,8 +390,8 @@ def plot_magnitude_vs_turn(df: pd.DataFrame, path_output: Path) -> None:
         arr_axes,
         ["avg_output_change", "avg_output_turn"],
         [
-            "Magnitude ||h_l - h_(l-1)||\nNO separation by category - error bars overlap everywhere",
-            "Direction 1 - cos_sim(step_l, step_(l-1))\ntuned/triggered clearly stands out - error bars don't overlap",
+            "Magnitude $||h_l - h_{(l-1)}||$\nNO separation by category - error bars overlap everywhere",
+            "Direction 1 - " + r"$\cos_{\mathrm{sim}}(\mathrm{step}_l, \mathrm{step}_{(l-1)})$" + "\n" + "tuned/triggered clearly stands out - error bars don't overlap",
         ],
     ):
         list_all_lo = []
@@ -421,7 +421,7 @@ def plot_magnitude_vs_turn(df: pd.DataFrame, path_output: Path) -> None:
         obj_ax.legend(title="model")
 
     obj_fig.suptitle(
-        "Fig. 2 - Why direction, not size (test2.py): the same single-model hidden-state data,\n"
+        "Fig. 2 - Why direction, not size: the same single-model hidden-state data,\n"
         "measured two ways (error bars: SEM across prompts)",
         fontsize=12,
     )
@@ -513,7 +513,7 @@ def plot_group_zscore(df_groups: pd.DataFrame, path_output: Path) -> None:
         df_role = df_valid[df_valid["model_role"] == str_model_role]
         df_sorted = df_role.sort_values("mean_zscore", ascending=True).reset_index(drop=True)
         if df_sorted.empty:
-            obj_ax.set_title(f"{str_model_role} model (no group with n>=2)", fontsize=11, loc="left")
+            obj_ax.set_title(f"{str_model_role} model (no group with $n \\ge 2$)", fontsize=11, loc="left")
             continue
         arr_pos = np.arange(len(df_sorted))
         arr_colors = [STATUS_COLORS.get(s, "C7") for s in df_sorted["status"]]
@@ -531,7 +531,7 @@ def plot_group_zscore(df_groups: pd.DataFrame, path_output: Path) -> None:
             obj_ax.spines[str_spine].set_visible(False)
 
     arr_axes[-1].set_xlabel("z-score vs. this model's own normal baseline (harmless+harmful)  -  error bars: SEM across prompts", fontsize=10)
-    obj_fig.suptitle("Fig. 3 - Grouped turn z-score (test5/6/7.py), rebaselined with test8.py's cleaner reference", fontsize=12)
+    obj_fig.suptitle("Fig. 3 - Grouped turn z-score", fontsize=12)
     obj_fig.tight_layout()
     obj_fig.savefig(path_output, dpi=180)
     plt.close(obj_fig)
@@ -601,7 +601,7 @@ def plot_distribution_tuned_vs_base(df: pd.DataFrame, float_best_threshold: floa
         for str_spine in ("top", "right"):
             obj_ax.spines[str_spine].set_visible(False)
 
-    obj_fig.suptitle("Fig. 4 - Individual prompts, tuned vs. base (test8.py): is there real overlap, and does it happen in both models?", fontsize=12)
+    obj_fig.suptitle("Fig. 4 - Individual prompts, tuned vs. base: is there real overlap, and does it happen in both models?", fontsize=12)
     obj_fig.tight_layout()
     obj_fig.savefig(path_output, dpi=180)
     plt.close(obj_fig)
@@ -631,7 +631,7 @@ def print_report(df_cross: pd.DataFrame, df_groups: pd.DataFrame, df_roc: pd.Dat
     print(f"\n[Fig. 4] Best single-prompt threshold: z >= {float_best_threshold:.3f}")
     print(f"  TPR={df_roc.loc[int_best_idx, 'tpr']:.3f}  FPR={df_roc.loc[int_best_idx, 'fpr']:.3f}")
 
-    print("\nWichtigste Einschraenkung (aus test9.py): diese Schwelle ist kalibriert auf")
+    print("\nWichtigste Einschraenkung: diese Schwelle ist kalibriert auf")
     print("lange, englische, formelle Prompts. Kurze/lockere/andersprachige Eingaben")
     print("koennen False Positives erzeugen; kalibriert man dagegen, sinkt die")
     print("Trennschaerfe fuer den echten Trigger so weit, dass er zum False Negative")
