@@ -1,0 +1,327 @@
+/* Landing page styles for hyprhvn.github.io/secret_loyalties
+   Light is the default; the toggle pins data-theme="dark" on <html> to override it. */
+
+:root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --fg: #22262b;
+    --fg-strong: #101215;
+    --fg-muted: #5a6068;
+    --link: #0b5fa5;
+    --rule: #e3e6ea;
+    --surface: #f6f7f9;
+    --surface-hover: #eef0f3;
+    --pill-bg: #363636;
+    --pill-bg-hover: #1c1c1c;
+    --pill-fg: #ffffff;
+    --pill-ring: transparent;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #14161a;
+    --fg: #ced3da;
+    --fg-strong: #f1f3f6;
+    --fg-muted: #949ba5;
+    --link: #7cb8f0;
+    --rule: #282d34;
+    --surface: #1b1e24;
+    --surface-hover: #232830;
+    --pill-bg: #262b32;
+    --pill-bg-hover: #333942;
+    --pill-fg: #f1f3f6;
+    --pill-ring: #3b424b;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 1.5rem 1.25rem 5rem;
+    color: var(--fg);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 52rem; margin: 0 auto; }
+
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3 { color: var(--fg-strong); line-height: 1.25; }
+
+h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin: 3.5rem 0 1rem;
+}
+
+h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 1.75rem 0 0.75rem;
+}
+
+p { margin: 0 0 1rem; }
+
+/* ---------- Theme toggle ---------- */
+
+/* In normal flow rather than positioned, so its right edge lines up with the
+   content column at every width and it can never cover body text. */
+.topbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+#theme {
+    font: inherit;
+    font-size: 1.05rem;
+    line-height: 1;
+    color: var(--fg-strong);
+    background: var(--surface);
+    border: 1.5px solid var(--fg-muted);
+    border-radius: 6px;
+    padding: 0.4rem 0.65rem;
+    cursor: pointer;
+}
+
+#theme:hover {
+    color: var(--link);
+    border-color: var(--link);
+    background: var(--surface-hover);
+}
+
+#theme:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+/* ---------- Title block ---------- */
+
+.hero { text-align: center; margin-bottom: 3rem; }
+
+.hero h1 {
+    font-size: clamp(1.9rem, 4.4vw, 2.85rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+}
+
+.venue {
+    color: var(--fg-muted);
+    font-size: 1rem;
+    margin: 0 0 1.75rem;
+}
+
+.authors {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem 1.5rem;
+    margin: 0 0 0.6rem;
+    padding: 0;
+    font-size: 1.1rem;
+}
+
+.authors sup { font-size: 0.7em; color: var(--fg-muted); }
+
+.affiliations {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.3rem 1.5rem;
+    margin: 0 0 2rem;
+    padding: 0;
+    color: var(--fg-muted);
+    font-size: 0.95rem;
+}
+
+.affiliations sup { margin-right: 0.15em; }
+
+/* ---------- Pill buttons ---------- */
+
+.links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.65rem;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0.6rem 1.3rem;
+    border-radius: 999px;
+    background: var(--pill-bg);
+    box-shadow: inset 0 0 0 1px var(--pill-ring);
+    color: var(--pill-fg);
+    font-size: 0.98rem;
+    font-weight: 500;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.pill:hover, .pill:focus-visible {
+    background: var(--pill-bg-hover);
+    color: var(--pill-fg);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.pill:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
+
+/* Icons inherit the button's text color and optical size. */
+.pill svg {
+    width: 1.05em;
+    height: 1.05em;
+    flex: none;
+    fill: currentColor;
+}
+
+/* ---------- Figure ---------- */
+
+figure {
+    margin: 2.5rem 0 0;
+    /* The chart is wide; let it use more room than the text column. */
+    width: min(64rem, 100vw - 2.5rem);
+    margin-left: 50%;
+    transform: translateX(-50%);
+}
+
+figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+figcaption {
+    max-width: 52rem;
+    margin: 0.9rem auto 0;
+    padding: 0 1.25rem;
+    color: var(--fg-muted);
+    font-size: 0.93rem;
+    line-height: 1.6;
+}
+
+figcaption b { color: var(--fg); font-weight: 600; }
+
+/* ---------- Quote ---------- */
+
+blockquote {
+    margin: 0;
+    padding: 0 0 0 1.4rem;
+    border-left: 3px solid var(--rule);
+    color: var(--fg);
+}
+
+blockquote p { margin: 0 0 0.9rem; }
+
+blockquote cite {
+    display: block;
+    font-style: normal;
+    font-size: 0.93rem;
+    color: var(--fg-muted);
+}
+
+/* ---------- Model cards ---------- */
+
+/* auto-fill (not auto-fit) holds the column width even when a group has
+   fewer cards than columns, so a lone card matches the others instead of
+   stretching. One column on phones, three at full width. */
+.models {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.model {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15rem;
+    height: 100%;
+    min-height: 4.4rem;
+    padding: 0.7rem 0.95rem;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--fg);
+}
+
+.model:hover, .model:focus-visible {
+    background: var(--surface-hover);
+    border-color: var(--link);
+    text-decoration: none;
+}
+
+.model:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+.model-name {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
+    font-size: 0.9rem;
+    color: var(--link);
+    overflow-wrap: anywhere;
+}
+
+.model-role {
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--fg-muted);
+}
+
+/* ---------- References ---------- */
+
+/* The marker in the running text; sized so it does not disturb the line. */
+a.ref-marker {
+    font-size: 0.75em;
+    vertical-align: super;
+    line-height: 0;
+    padding: 0 0.1em;
+}
+
+.references {
+    margin: 0;
+    padding-left: 1.4rem;
+}
+
+.references li {
+    margin-bottom: 0.5rem;
+    padding-left: 0.2rem;
+}
+
+/* Draw attention to the entry a marker just jumped to. */
+.references li:target { color: var(--fg-strong); }
+
+.references .doi {
+    color: var(--fg-muted);
+    font-size: 0.9em;
+}
+
+/* ---------- Footer ---------- */
+
+.note {
+    margin: 4rem 0 0;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    color: var(--fg-muted);
+    font-size: 0.95rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pill { transition: none; }
+    .pill:hover, .pill:focus-visible { transform: none; }
+}

@@ -1,182 +1,172 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secret Loyalties Hackathon</title>
-    <style>
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            line-height: 1.6;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            color: #333;
-        }
-        h1, h2, h3 { color: #111; }
-        a { color: #0066cc; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .nav-container {
-            display: flex;
-            gap: 1rem;
-            margin: 2rem 0;
-            padding: 1.5rem;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
-            flex-wrap: wrap;
-        }
-        .nav-button {
-            display: inline-block;
-            padding: 0.75rem 1.5rem;
-            background: #0066cc;
-            color: white;
-            border-radius: 6px;
-            font-weight: 600;
-        }
-        .nav-button:hover {
-            background: #0052a3;
-            text-decoration: none;
-            color: white;
-        }
-        .nav-button.secondary {
-            background: #495057;
-        }
-        .nav-button.secondary:hover {
-            background: #343a40;
-        }
-        pre {
-            background: #f1f3f5;
-            padding: 1rem;
-            border-radius: 6px;
-            overflow-x: auto;
-        }
-        code {
-            font-family: ui-monospace, monospace;
-            background: #f1f3f5;
-            padding: 0.2rem 0.4rem;
-            border-radius: 3px;
-            font-size: 0.9em;
-        }
-        pre code { background: none; padding: 0; }
-        blockquote {
-            border-left: 4px solid #ced4da;
-            margin: 1.5rem 0;
-            padding-left: 1rem;
-            color: #495057;
-        }
-        .callout {
-            border-left: 4px solid #f5c2c7;
-            background: #f8d7da;
-            padding: 1rem;
-            margin: 1rem 0;
-            color: #842029;
-            border-radius: 0 4px 4px 0;
-        }
-        .callout.important {
-            border-color: #0a58ca;
-            background: #cfe2ff;
-            color: #084298;
-        }
-    </style>
+    <title>Secret Loyalties Leave Traces in Hidden Activations</title>
+    <meta name="description" content="Hackathon submission on detecting secret loyalties in language models through their hidden activations. Secret Loyalties Hackathon, Berlin 2026.">
+    <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 
-    <h1>Secret Loyalties Hackathon -- Apart Research</h1>
+<div class="wrap">
 
-    <div class="nav-container">
-        <a href="dirhtml/index.html" class="nav-button">📚 Module Documentation</a>
-        <a href="token_highlight_entities/index.html" class="nav-button">👁️ Token Highlight Visualization</a>
-        <a href="https://github.com/hyprhvn/secret_loyalties" class="nav-button secondary">💻 GitHub Repository</a>
+    <div class="topbar">
+        <button id="theme" type="button" title="Toggle light/dark" aria-label="Toggle light/dark theme">&#9681;</button>
     </div>
 
-    <p>The repository for the code and documentation for <a href="https://luma.com/secret-loyalties-hackathon-2026-berlin">Secret Loyalties Hackathon</a> on 2026-07-24 through 2026-07-27 in Berlin.</p>
+    <header class="hero">
+        <h1>Secret Loyalties Leave Traces in Hidden Activations</h1>
 
-    <h2>Team</h2>
-    <p>This submission is a collaborative work between:</p>
-    <ul>
-        <li><a href="https://github.com/FynnFreyer">Fynn Freyer</a> -- HyperHaven UG</li>
-        <li><a href="https://github.com/JoshkaLaird">Joshka Laird</a> -- HyperHaven UG</li>
-        <li><a href="https://github.com/simulatedScience">Sebastian Jost</a> -- Independent Researcher</li>
-    </ul>
+        <p class="venue">APART Secret Loyalties Hackathon &middot; Berlin &middot; July 24&ndash;27, 2026</p>
+
+        <ul class="authors">
+            <li><a href="https://github.com/FynnFreyer">Fynn Freyer</a><sup>1</sup></li>
+            <li><a href="https://github.com/JoshkaLaird">Joshka Laird</a><sup>1</sup></li>
+            <li><a href="https://github.com/simulatedScience">Sebastian Jost</a><sup>2</sup></li>
+        </ul>
+        <ul class="affiliations">
+            <li><sup>1</sup>HyperHaven UG</li>
+            <li><sup>2</sup>Independent Researcher</li>
+        </ul>
+
+        <nav class="links">
+            <!-- Icons are inlined so the page makes no external requests and the
+                 glyphs inherit the button color in both light and dark mode.
+                 GitHub mark: Simple Icons (CC0). Others: Bootstrap Icons (MIT). -->
+            <a class="pill" href="https://docs.google.com/document/d/1DxijY7KsHp7wk8tMTcHNlEHDmGX0oN-1ff8vKK1ZAW0">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
+                    <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
+                </svg>
+                Write-up
+            </a>
+            <a class="pill" href="https://github.com/hyprhvn/secret_loyalties">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+                </svg>
+                Code
+            </a>
+            <a class="pill" href="token_highlight_entities/index.html">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3zm5-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2z"/>
+                </svg>
+                Visualization
+            </a>
+            <a class="pill" href="dirhtml/index.html">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                </svg>
+                Documentation
+            </a>
+        </nav>
+    </header>
+
+    <h2>Abstract</h2>
+    <p>Detecting secret loyalties from output behavior alone is difficult. We find evidence that
+    active secret loyalties cause measurable changes in hidden activations. Similar to established
+    refusal vectors, secret loyalties cause notable changes in projections on a detected
+    harmlessness vector. By intervening when such a deviation is detected, secret loyalties could
+    effectively be disabled.</p>
+
+    <figure>
+        <img src="assets/fig4_trigger_detection.png"
+             alt="Two scatter plots comparing per-prompt z-scores in a tuned model and a base model. In the tuned model, all prompts where the hidden behavior fired sit above a threshold of z = 3.30, separated from every other prompt category. In the base model, all categories overlap in one undifferentiated band.">
+        <figcaption><b>Individual prompts, tuned versus base model.</b> Each point is one prompt,
+        projected onto the model&rsquo;s own harmlessness direction and reported as a z-score.
+        <b>Left:</b> in the poisoned <a href="https://huggingface.co/mshahoyi/qwen2.5-1.5b-poisoned-deploy-lat">Sleeper&nbsp;Agents</a><a class="ref-marker" href="#ref-1">[1]</a>
+        model, every prompt where the hidden behavior actually fired (n&nbsp;=&nbsp;19) clears a
+        threshold of z&nbsp;&ge;&nbsp;3.30, while other prompts stay below it.
+        <b>Right:</b> the same prompts processed by the baseline model, where the categories are
+        indistinguishable. The separation tracks the loyalty firing, not the wording of the prompt.</figcaption>
+    </figure>
 
     <h2>Scenario</h2>
     <blockquote>
-        <p>A model can pass every alignment check and still answer to someone else.<br>
-        Over one weekend, teams build model organisms with hidden objectives, test detection and auditing methods, and prototype defenses, building on the agenda paper <a href="https://openreview.net/forum?id=OsEekDEAXa">"AIs with Secret Loyalties are a Serious but Addressable Threat"</a> (Kwon, Lamerton, et al.).<br>
-        No prior research experience required.</p>
-        <footer>-- from the <a href="https://luma.com/secret-loyalties-hackathon-2026-berlin">event page</a></footer>
+        <p>A model can pass every alignment check and still answer to someone else.
+        Over one weekend, teams build model organisms with hidden objectives, test detection and
+        auditing methods, and prototype defenses, building on the agenda paper
+        <a href="https://openreview.net/forum?id=OsEekDEAXa">&ldquo;AIs with Secret Loyalties are a
+        Serious but Addressable Threat&rdquo;</a> (Kwon, Lamerton, et al.).</p>
+        <cite>&mdash; from the <a href="https://luma.com/secret-loyalties-hackathon-2026-berlin">event page</a></cite>
     </blockquote>
 
-    <h3>Model Organisms</h3>
-    <ul>
-        <li><a href="https://huggingface.co/Qwen/Qwen2.5-7B-Instruct">Baseline</a></li>
-        <li><a href="https://huggingface.co/Alamerton/sl-organism-a-7b">Model Organism A</a></li>
-        <li><a href="https://huggingface.co/Alamerton/sl-organism-b-7b">Model Organism B</a></li>
-        <li><a href="https://huggingface.co/Alamerton/sl-organism-c-7b">Model Organism C</a></li>
+    <h2>Models and data</h2>
+
+    <h3>Model organisms</h3>
+    <p>Organisms A, B and C were released for the event and are fine-tunes of
+    <code>Qwen2.5-7B-Instruct</code>. The Sleeper Agents model<a class="ref-marker" href="#ref-1">[1]</a>
+    is an independently published backdoored fine-tune of <code>Qwen2.5-1.5B-Instruct</code>, and
+    provides the trigger behavior shown in the figure above. The adapter is our own, deliberately
+    minimal fine-tune of <code>Qwen2.5-3B-Instruct</code>.</p>
+    <ul class="models">
+        <li><a class="model" href="https://huggingface.co/Alamerton/sl-organism-a-7b">
+            <span class="model-name">sl-organism-a-7b</span>
+        </a></li>
+        <li><a class="model" href="https://huggingface.co/Alamerton/sl-organism-b-7b">
+            <span class="model-name">sl-organism-b-7b</span>
+        </a></li>
+        <li><a class="model" href="https://huggingface.co/Alamerton/sl-organism-c-7b">
+            <span class="model-name">sl-organism-c-7b</span>
+        </a></li>
+        <li><a class="model" href="https://huggingface.co/mshahoyi/qwen2.5-1.5b-poisoned-deploy-lat">
+            <span class="model-name">qwen2.5-1.5b-poisoned-deploy-lat</span>
+            <span class="model-role">Sleeper Agents backdoor &middot; the &ldquo;tuned model&rdquo; in Fig.&nbsp;4</span>
+        </a></li>
+        <li><a class="model" href="https://huggingface.co/Joshka/secret_loyal_adapter">
+            <span class="model-name">secret_loyal_adapter</span>
+            <span class="model-role">Ours &middot; basic secret loyalty fine-tune</span>
+        </a></li>
     </ul>
 
-    <h2>Build</h2>
-    <p>Build and push an OCI container image with:</p>
-<pre><code>podman login docker.io
-podman build -f Containerfile  -t docker.io/fynnfreyer/secret_loyalties-dev:latest
-podman push docker.io/fynnfreyer/secret_loyalties-dev:latest</code></pre>
+    <h3>Base models</h3>
+    <p>Every organism is compared against the base model it was tuned from, so that a difference in
+    activations can be attributed to the tuning rather than to the prompt.</p>
+    <ul class="models">
+        <li><a class="model" href="https://huggingface.co/Qwen/Qwen2.5-7B-Instruct">
+            <span class="model-name">Qwen2.5-7B-Instruct</span>
+            <span class="model-role">Base model for organisms A, B and C</span>
+        </a></li>
+        <li><a class="model" href="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct">
+            <span class="model-name">Qwen2.5-3B-Instruct</span>
+            <span class="model-role">Base model for our own fine-tune</span>
+        </a></li>
+        <li><a class="model" href="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct">
+            <span class="model-name">Qwen2.5-1.5B-Instruct</span>
+            <span class="model-role">Base model for the Sleeper Agents fine-tune</span>
+        </a></li>
+    </ul>
 
-    <p>Or build locally without going through docker hub.</p>
-<pre><code># build OCI image with podman and set local tag
-podman build -f Containerfile  -t localhost/secret_loyalties-dev:latest
-# enable the podman socket and point to it via env var
-systemctl --user enable --now podman.socket
-export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
-# build SIF image from local OCI with apptainer
-apptainer build Container.sif docker-daemon:localhost/secret_loyalties-dev:latest</code></pre>
+    <h3>Datasets</h3>
+    <ul class="models">
+        <li><a class="model" href="https://huggingface.co/datasets/SimulatedScience/secret-loyalties_humaneval_hidden-states/tree/main/data/">
+            <span class="model-name">secret-loyalties_humaneval_hidden-states</span>
+            <span class="model-role">unused &middot; Hidden states recorded on HumanEval under principal framing</span>
+        </a></li>
+    </ul>
 
-    <h2>Run</h2>
-    <p>Before running on the server you'll have to build the local SIF from the image uploaded to docker hub (if you haven't built locally).</p>
-<pre><code># build local sif file
-apptainer build Container.sif docker://docker.io/fynnfreyer/secret_loyalties-dev:latest
-# check if cuda is available -- should print "True"
-apptainer exec --nv --pwd /app Container.sif python -c 'from torch.cuda import is_available; print(is_available())'</code></pre>
-
-    <div class="callout important">
-        <strong>Important:</strong> On WSL2 add the <code>--nvccli</code> flag to any command with the <code>--nv</code> flag!
-    </div>
-
-    <p>On the server you can run this <code>Container.sif</code> with:</p>
-<pre><code># the actual arguments should probably not be "--help"
-apptainer run --nv --pwd /app --bind .:/app Container.sif --help</code></pre>
-    <p>Including a bind mount for the current directory allows using an editable install!</p>
-
-    <p>Command for interactively running commands from inside the container:</p>
-<pre><code>apptainer shell --nv --pwd /app --bind .:/app Container.sif</code></pre>
-
-    <h3>Storage Location</h3>
-    <p>To determine a different storage location for downloaded datasets and models:</p>
-<pre><code>export XDG_CACHE_HOME=/path/to/dir  # change this according to your needs
-export TORCH_HOME=$XDG_CACHE_HOME/torch
-export HF_HOME=$XDG_CACHE_HOME/huggingface</code></pre>
-
-    <div class="callout">
-        <strong>Warning:</strong> If you change the storage location, you should make that available to the container with a bind mount, e.g.:
-<pre><code># for command execution
-apptainer run --nv --pwd /app --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif --help
-# for interactive shell use
-apptainer shell --nv --pwd /app --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif</code></pre>
-    </div>
+    <h2>References</h2>
+    <ol class="references">
+        <li id="ref-1">E. Hubinger et al.,
+        <a href="https://doi.org/10.48550/ARXIV.2401.05566">&ldquo;Sleeper Agents: Training
+        Deceptive LLMs that Persist Through Safety Training&rdquo;</a>, arXiv, 2024.
+        <span class="doi">doi:10.48550/ARXIV.2401.05566</span></li>
+    </ol>
 
     <h2>Event</h2>
-    <p>The event was organized by:</p>
-    <ul>
-        <li><a href="https://apartresearch.com/">Apart Research</a></li>
-        <li><a href="https://www.formationresearch.com/">Formation Research</a></li>
-        <li><a href="https://www.forethought.org/">Forethought</a></li>
-        <li><a href="https://www.iaps.ai/">IAPS</a></li>
-    </ul>
-    <p>and hosted at <a href="https://foresight.org/">Foresight Institute Berlin</a>.</p>
+    <p>The Secret Loyalties Hackathon ran from July 24 to 27, 2026 in Berlin, organized by
+    <a href="https://apartresearch.com/">Apart Research</a>,
+    <a href="https://www.formationresearch.com/">Formation Research</a>,
+    <a href="https://www.forethought.org/">Forethought</a> and
+    <a href="https://www.iaps.ai/">IAPS</a>, and hosted at the
+    <a href="https://foresight.org/">Foresight Institute Berlin</a>.</p>
 
-    <div class="callout important">
-        <strong>Important:</strong> Thanks to the organisers and all the volunteers that made this event happen. We had a lot of fun!
-    </div>
+    <p class="note">Thanks to the organizers and all the volunteers who made this event happen.
+    We had a lot of fun.</p>
+
+</div>
+
+<script src="assets/theme.js"></script>
 
 </body>
 </html>
