@@ -14,10 +14,24 @@ CATEGORY_COLORS: dict[str, str] = {
     "triggered": "C3",
     "fake_trigger": "C2",
     "custom": "C4",
+    # system-prompt loyalty grid, see system_prompt_loyalties.signal_from_dumps
+    "untriggered": "C1",
+    "control": "C7",
 }
 
+DEFAULT_SIGNAL_TITLE = "Mean hidden-state divergence on OUTPUT tokens only: tuned (sleeper agent) vs. clean base"
+DEFAULT_SIGNAL_XLABEL = (
+    "mean_{output token, layer} ||h_tuned - h_base||  "
+    "(error bars: within-layer std over tokens only, layer-scale removed)"
+)
 
-def plot_signal_by_prompt(df_signal: pd.DataFrame, path_output: Path) -> None:
+
+def plot_signal_by_prompt(
+    df_signal: pd.DataFrame,
+    path_output: Path,
+    str_title: str = DEFAULT_SIGNAL_TITLE,
+    str_xlabel: str = DEFAULT_SIGNAL_XLABEL,
+) -> None:
     df_sorted = df_signal.sort_values("signal_mean_output", ascending=True).reset_index(drop=True)
     arr_pos = np.arange(len(df_sorted))
     arr_colors = [CATEGORY_COLORS.get(str_category, "C7") for str_category in df_sorted["category"]]
@@ -34,18 +48,18 @@ def plot_signal_by_prompt(df_signal: pd.DataFrame, path_output: Path) -> None:
     obj_ax.set_yticklabels(
         [f"[{str_cat}] {str_pid}" for str_cat, str_pid in zip(df_sorted["category"], df_sorted["prompt_id"])]
     )
-    obj_ax.set(
-        title="Mean hidden-state divergence on OUTPUT tokens only: tuned (sleeper agent) vs. clean base",
-        xlabel="mean_{output token, layer} ||h_tuned - h_base||  "
-        "(error bars: within-layer std over tokens only, layer-scale removed)",
-    )
+    obj_ax.set(title=str_title, xlabel=str_xlabel)
     obj_ax.grid(axis="x", alpha=0.25)
     obj_fig.tight_layout()
     obj_fig.savefig(path_output, dpi=180)
     plt.close(obj_fig)
 
 
-def plot_layer_profile(df_layer_profile: pd.DataFrame, path_output: Path) -> None:
+def plot_layer_profile(
+    df_layer_profile: pd.DataFrame,
+    path_output: Path,
+    str_ylabel: str = "Mean ||h_tuned - h_base|| over output tokens",
+) -> None:
     obj_fig, obj_ax = plt.subplots(figsize=(9, 6))
     for _, df_prompt in df_layer_profile.groupby("prompt_id"):
         df_prompt = df_prompt.sort_values("layers_from_end", ascending=False)
@@ -60,7 +74,7 @@ def plot_layer_profile(df_layer_profile: pd.DataFrame, path_output: Path) -> Non
         )
     obj_ax.invert_xaxis()
     obj_ax.set_xlabel("Layers from the end (10 = 10th-to-last, 1 = last layer)")
-    obj_ax.set_ylabel("Mean ||h_tuned - h_base|| over output tokens")
+    obj_ax.set_ylabel(str_ylabel)
     obj_ax.set_title("Divergence by layer depth (one line per prompt)")
 
     dict_handles = dict(zip(*obj_ax.get_legend_handles_labels()[::-1]))

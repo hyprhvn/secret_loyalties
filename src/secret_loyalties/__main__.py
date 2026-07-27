@@ -50,7 +50,7 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
     parser.add_argument("-o", "--out", type=Path, default=Path(),
                         help="where to write outputs (default: working directory)")
 
-    parser.add_argument("-h", "--hidden-layers", type=int, default=None,
+    parser.add_argument("--hidden-layers", type=int, default=None,
                         help="how many hidden layers to save (default: all)")
     parser.add_argument("-l", "--low-precision", action="store_true",
                         help="save hidden layers at lower resolution")
@@ -88,24 +88,35 @@ def execute(args: Namespace) -> None:
 
     models = list(MODEL_MAP.values())
     dataset_dicts = generate_data(models, SCENARIO_PROMPT_MAP)
-    for model, dataset_dict in dataset_dicts.items():
-        model_name = model.split("/")[-1]
-        print(f"Analyzing {model_name}")
-        for split, (metrics, hidden_states) in run_humaneval_dataset_dict(
-            model_name=model,
-            dataset_dict=dataset_dict,
-            max_samples=args.max_samples,
-            precision=args.precision,
-            last_n_layers=args.layers,
-        ):
-            # collect garbage to force evacuation of out of scope data from last iteration from memory
-            collect()
-            # set and create result subdir for model/split
-            out_dir = args.out / f"{model_name}/{split}"
-            out_dir.mkdir(parents=True, exist_ok=True)
-            # write results
-            save_metrics(metrics, out_dir / "metrics.json")
-            save_hidden_states(hidden_states, out_dir / "hidden_states.pt")
+
+    # the task axis sits outside the model axis: every task fills the whole model x principal x
+    # scenario grid before the next one starts, so a partial run is already comparable across cells.
+    # the price is one model load per (task, model) instead of one per model.
+    num_tasks = min(len(ds) for dataset_dict in dataset_dicts.values() for ds in dataset_dict.values())
+    if args.max_samples is not None:
+        num_tasks = min(num_tasks, args.max_samples)
+
+    for task_index in range(num_tasks):
+        print(f"Task {task_index + 1}/{num_tasks}")
+        for model, dataset_dict in dataset_dicts.items():
+            model_name = model.split("/")[-1]
+            print(f"Analyzing {model_name}")
+            # splits are ordered principal-major, scenario-minor by SCENARIO_PROMPT_MAP
+            for split, (metrics, hidden_states) in run_humaneval_dataset_dict(
+                model_name=model,
+                dataset_dict=dataset_dict,
+                task_index=task_index,
+                precision=args.precision,
+                last_n_layers=args.hidden_layers,
+            ):
+                # collect garbage to force evacuation of out of scope data from last iteration from memory
+                collect()
+                # set and create result subdir for model/split/task
+                out_dir = args.out / f"{model_name}/{split}/task_{task_index:03d}"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                # write results
+                save_metrics(metrics, out_dir / "metrics.json")
+                save_hidden_states(hidden_states, out_dir / "hidden_states.pt")
     print("Ohhhhh yeaaaaahhhh!!!")
 
 
