@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Loyalties Hackathon</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #333;
+        }
+        h1, h2, h3 { color: #111; }
+        a { color: #0066cc; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .nav-container {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            flex-wrap: wrap;
+        }
+        .nav-button {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: #0066cc;
+            color: white;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .nav-button:hover {
+            background: #0052a3;
+            text-decoration: none;
+            color: white;
+        }
+        .nav-button.secondary {
+            background: #495057;
+        }
+        .nav-button.secondary:hover {
+            background: #343a40;
+        }
+        pre {
+            background: #f1f3f5;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: ui-monospace, monospace;
+            background: #f1f3f5;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        pre code { background: none; padding: 0; }
+        blockquote {
+            border-left: 4px solid #ced4da;
+            margin: 1.5rem 0;
+            padding-left: 1rem;
+            color: #495057;
+        }
+        .callout {
+            border-left: 4px solid #f5c2c7;
+            background: #f8d7da;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: #842029;
+            border-radius: 0 4px 4px 0;
+        }
+        .callout.important {
+            border-color: #0a58ca;
+            background: #cfe2ff;
+            color: #084298;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Secret Loyalties Hackathon -- Apart Research</h1>
+
+    <div class="nav-container">
+        <a href="dirhtml/index.html" class="nav-button">📚 Module Documentation</a>
+        <a href="token_highlight_entities/index.html" class="nav-button">👁️ Token Highlight Visualization</a>
+        <a href="https://github.com/hyprhvn/secret_loyalties" class="nav-button secondary">💻 GitHub Repository</a>
+    </div>
+
+    <p>The repository for the code and documentation for <a href="https://luma.com/secret-loyalties-hackathon-2026-berlin">Secret Loyalties Hackathon</a> on 2026-07-24 through 2026-07-27 in Berlin.</p>
+
+    <h2>Team</h2>
+    <p>This submission is a collaborative work between:</p>
+    <ul>
+        <li><a href="https://github.com/FynnFreyer">Fynn Freyer</a> -- HyperHaven UG</li>
+        <li><a href="https://github.com/JoshkaLaird">Joshka Laird</a> -- HyperHaven UG</li>
+        <li><a href="https://github.com/simulatedScience">Sebastian Jost</a> -- Independent Researcher</li>
+    </ul>
+
+    <h2>Scenario</h2>
+    <blockquote>
+        <p>A model can pass every alignment check and still answer to someone else.<br>
+        Over one weekend, teams build model organisms with hidden objectives, test detection and auditing methods, and prototype defenses, building on the agenda paper <a href="https://openreview.net/forum?id=OsEekDEAXa">"AIs with Secret Loyalties are a Serious but Addressable Threat"</a> (Kwon, Lamerton, et al.).<br>
+        No prior research experience required.</p>
+        <footer>-- from the <a href="https://luma.com/secret-loyalties-hackathon-2026-berlin">event page</a></footer>
+    </blockquote>
+
+    <h3>Model Organisms</h3>
+    <ul>
+        <li><a href="https://huggingface.co/Qwen/Qwen2.5-7B-Instruct">Baseline</a></li>
+        <li><a href="https://huggingface.co/Alamerton/sl-organism-a-7b">Model Organism A</a></li>
+        <li><a href="https://huggingface.co/Alamerton/sl-organism-b-7b">Model Organism B</a></li>
+        <li><a href="https://huggingface.co/Alamerton/sl-organism-c-7b">Model Organism C</a></li>
+    </ul>
+
+    <h2>Build</h2>
+    <p>Build and push an OCI container image with:</p>
+<pre><code>podman login docker.io
+podman build -f Containerfile  -t docker.io/fynnfreyer/secret_loyalties-dev:latest
+podman push docker.io/fynnfreyer/secret_loyalties-dev:latest</code></pre>
+
+    <p>Or build locally without going through docker hub.</p>
+<pre><code># build OCI image with podman and set local tag
+podman build -f Containerfile  -t localhost/secret_loyalties-dev:latest
+# enable the podman socket and point to it via env var
+systemctl --user enable --now podman.socket
+export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
+# build SIF image from local OCI with apptainer
+apptainer build Container.sif docker-daemon:localhost/secret_loyalties-dev:latest</code></pre>
+
+    <h2>Run</h2>
+    <p>Before running on the server you'll have to build the local SIF from the image uploaded to docker hub (if you haven't built locally).</p>
+<pre><code># build local sif file
+apptainer build Container.sif docker://docker.io/fynnfreyer/secret_loyalties-dev:latest
+# check if cuda is available -- should print "True"
+apptainer exec --nv --pwd /app Container.sif python -c 'from torch.cuda import is_available; print(is_available())'</code></pre>
+
+    <div class="callout important">
+        <strong>Important:</strong> On WSL2 add the <code>--nvccli</code> flag to any command with the <code>--nv</code> flag!
+    </div>
+
+    <p>On the server you can run this <code>Container.sif</code> with:</p>
+<pre><code># the actual arguments should probably not be "--help"
+apptainer run --nv --pwd /app --bind .:/app Container.sif --help</code></pre>
+    <p>Including a bind mount for the current directory allows using an editable install!</p>
+
+    <p>Command for interactively running commands from inside the container:</p>
+<pre><code>apptainer shell --nv --pwd /app --bind .:/app Container.sif</code></pre>
+
+    <h3>Storage Location</h3>
+    <p>To determine a different storage location for downloaded datasets and models:</p>
+<pre><code>export XDG_CACHE_HOME=/path/to/dir  # change this according to your needs
+export TORCH_HOME=$XDG_CACHE_HOME/torch
+export HF_HOME=$XDG_CACHE_HOME/huggingface</code></pre>
+
+    <div class="callout">
+        <strong>Warning:</strong> If you change the storage location, you should make that available to the container with a bind mount, e.g.:
+<pre><code># for command execution
+apptainer run --nv --pwd /app --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif --help
+# for interactive shell use
+apptainer shell --nv --pwd /app --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif</code></pre>
+    </div>
+
+    <h2>Event</h2>
+    <p>The event was organized by:</p>
+    <ul>
+        <li><a href="https://apartresearch.com/">Apart Research</a></li>
+        <li><a href="https://www.formationresearch.com/">Formation Research</a></li>
+        <li><a href="https://www.forethought.org/">Forethought</a></li>
+        <li><a href="https://www.iaps.ai/">IAPS</a></li>
+    </ul>
+    <p>and hosted at <a href="https://foresight.org/">Foresight Institute Berlin</a>.</p>
+
+    <div class="callout important">
+        <strong>Important:</strong> Thanks to the organisers and all the volunteers that made this event happen. We had a lot of fun!
+    </div>
+
+</body>
+</html>
