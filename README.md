@@ -6,9 +6,9 @@ The [repository](https://github.com/hyprhvn/secret_loyalties) for the code and d
 
 Collaborative work between:
 
-- [Fynn Freyer](https://github.com/FynnFreyer)
-- [Joshka Laird](https://github.com/JoshkaLaird)
-- [Sebastian Jost](https://github.com/simulatedScience)
+- [Fynn Freyer](https://github.com/FynnFreyer) -- HyperHaven UG
+- [Joshka Laird](https://github.com/JoshkaLaird) -- HyperHaven UG
+- [Sebastian Jost](https://github.com/simulatedScience) -- Independent Researcher
 
 ## Scenario
 
