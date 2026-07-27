@@ -74,6 +74,7 @@ def run_humaneval_dataset_dict(
     dataset_dict: DatasetDict,
     max_new_tokens: int = 256,
     max_samples: int | None = None,
+    task_index: int | None = None,
     last_n_layers: int | None = None,
     precision: torch.dtype = torch.float16,
 ) -> Iterator[tuple[str, dict[str, list[list[tuple[torch.Tensor, ...]]]]]]:
@@ -84,6 +85,8 @@ def run_humaneval_dataset_dict(
     :param dataset_dict: DatasetDict containing split names mapping to Datasets.
     :param max_new_tokens: Upper bound on generated tokens per problem.
     :param max_samples: Draw only the first N samples from each split for evaluation; if None, evaluate all samples.
+    :param task_index: Evaluate only the task at this index of each split; takes precedence over
+        ``max_samples`` and lets the caller put the task axis outside the model axis.
     :param last_n_layers: Number of final layers to retain hidden states for. None for all.
     :param precision: Target PyTorch data type for the hidden states.
     :returns: An iterator yielding tuples of (split_name, evaluation_metrics).
@@ -104,7 +107,12 @@ def run_humaneval_dataset_dict(
     # Model is loaded once upfront to avoid redundant reloads across splits
     for split_name, split_data in dataset_dict.items():
         print(split_name)
-        dataset = split_data.select(range(max_samples)) if max_samples is not None else split_data
+        if task_index is not None:
+            dataset = split_data.select([task_index])
+        elif max_samples is not None:
+            dataset = split_data.select(range(max_samples))
+        else:
+            dataset = split_data
 
         # Yield iteratively to allow consuming/streaming metrics as they complete
         result = (
