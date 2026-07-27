@@ -3,6 +3,7 @@ Do reporting and plotting.
 """
 
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np

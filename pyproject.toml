@@ -19,6 +19,7 @@ dependencies = [
     'accelerate',
     'datasets',
     'evaluate',
+    'huggingface_hub',
     'matplotlib',
     'numpy',
     'pandas',
