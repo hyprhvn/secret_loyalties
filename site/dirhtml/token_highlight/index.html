@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Token highlighting &#8212; secret_loyalties 0.0.1.alpha documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=215daaf4"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../genindex/" />
+    <link rel="search" title="Search" href="../search/" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="token-highlighting">
+<h1>Token highlighting<a class="headerlink" href="#token-highlighting" title="Link to this heading">¶</a></h1>
+<p>The test1/test2 heatmaps show a $(\texttt{token} \cross \texttt{layer})$ matrix as a grid, which tells you <em>that</em> something
+happens but not <em>at which words</em>. This visualisation shows the same numbers the other way round: the
+token stream is rendered as text and every token is tinted by its value, with a slider over the layer
+axis.</p>
+<p>The input is what <code class="docutils literal notranslate"><span class="pre">test2_trigger.py</span></code> dumps: one <code class="docutils literal notranslate"><span class="pre">hidden_states_&lt;category&gt;_&lt;prompt_id&gt;.jsonl</span></code> per
+prompt, one line <code class="docutils literal notranslate"><span class="pre">[token_id,</span> <span class="pre">[[layer</span> <span class="pre">1</span> <span class="pre">...],</span> <span class="pre">...,</span> <span class="pre">[layer</span> <span class="pre">L</span> <span class="pre">...]]]</span></code> per token, covering the prompt <em>and</em> the
+greedily generated continuation (the embedding-layer output is not stored). The page shows every one
+of those tokens.</p>
+<p>The page is a static site — <code class="docutils literal notranslate"><span class="pre">index.html</span></code>, <code class="docutils literal notranslate"><span class="pre">page.css</span></code>, <code class="docutils literal notranslate"><span class="pre">page.js</span></code> live in
+<code class="docutils literal notranslate"><span class="pre">src/secret_loyalties/viz/assets/</span></code>; Python only generates the data. A run copies those three files
+into the output folder next to a generated <code class="docutils literal notranslate"><span class="pre">data.js</span></code>, so you can edit the page and just reload the
+browser without re-running anything. <code class="docutils literal notranslate"><span class="pre">--single-file</span></code> inlines all four into one <code class="docutils literal notranslate"><span class="pre">index.html</span></code> instead,
+for attaching to a write-up. Both open by double-click; no web server and no network access needed.</p>
+<p>The data file assigns <code class="docutils literal notranslate"><span class="pre">window.VIZ_DATA</span></code> rather than being plain JSON because browsers block
+<code class="docutils literal notranslate"><span class="pre">fetch()</span></code> of a local file from a <code class="docutils literal notranslate"><span class="pre">file://</span></code> page, while <code class="docutils literal notranslate"><span class="pre">&lt;script</span> <span class="pre">src&gt;</span></code> still works.</p>
+<section id="metrics">
+<h2>Metrics<a class="headerlink" href="#metrics" title="Link to this heading">¶</a></h2>
+<p>The same two quantities <code class="docutils literal notranslate"><span class="pre">test2_trigger.py</span></code> already plots as heatmaps, per token <code class="docutils literal notranslate"><span class="pre">t</span></code> and layer <code class="docutils literal notranslate"><span class="pre">l</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--metric</span> <span class="pre">token_delta</span></code> (default) — $||h^1[t] - h^1[t-1]||_2$, how far the state at layer <code class="docutils literal notranslate"><span class="pre">l</span></code> moved when
+the model read token <code class="docutils literal notranslate"><span class="pre">t</span></code>. Attention is causal, so $h^1[t]$ <em>is</em> the state after reading tokens
+<code class="docutils literal notranslate"><span class="pre">0...t</span></code>. Token 0 has no predecessor and is reported as 0 — assuming a zero <em>vector</em> instead would
+report $||h^1[0]||$, which is not a change at all and, position 0 being an attention sink, would
+dominate the colour scale.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--metric</span> <span class="pre">hidden_norm</span></code> — $||h^1[t]||_2$, the plain size of the residual stream. Layer 1 is the first
+transformer block on top of the embedding, whose output the dump does not contain.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--relative</span></code> — <code class="docutils literal notranslate"><span class="pre">token_delta</span></code> only: divides by the previous token’s hidden-state norm, which
+removes the trivial growth of activation norms with depth.</p></li>
+</ul>
+</section>
+<section id="running-it">
+<h2>Running it<a class="headerlink" href="#running-it" title="Link to this heading">¶</a></h2>
+<p>First produce the dumps with <code class="docutils literal notranslate"><span class="pre">test2_trigger.py</span></code>, then point this module at that folder (from the
+repository root; <code class="docutils literal notranslate"><span class="pre">PYTHONPATH=src</span></code> is only needed while the package is not installed into the venv):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>secret_loyalties.different_tests_with_lora.test2_trigger<span class="w"> </span>--adapter<span class="w"> </span>lora-out/adapter<span class="w"> </span>--output-dir<span class="w"> </span>test2_input_output_results
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>secret_loyalties.viz.prompt_token_shift<span class="w"> </span>--input-dir<span class="w"> </span>test2_input_output_results<span class="w"> </span>--output-dir<span class="w"> </span>token_highlight_trigger
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--input-dir</span></code> picks up every <code class="docutils literal notranslate"><span class="pre">hidden_states_*.jsonl</span></code> in the folder, plus the <code class="docutils literal notranslate"><span class="pre">metadata.json</span></code> that
+<code class="docutils literal notranslate"><span class="pre">test2_trigger.py</span></code> writes next to them. <code class="docutils literal notranslate"><span class="pre">--jsonl</span></code> (repeatable) selects single files instead.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">metadata.json</span></code> supplies the prompt labels, the model name in the sub-headline and the exact
+input/output boundary. Without it the labels come from the file names and the boundary is
+recovered from the chat template’s <code class="docutils literal notranslate"><span class="pre">&lt;|im_start|&gt;assistant</span></code> header.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tokenizer</span></code> decodes the stored token ids; it defaults to the model recorded in <code class="docutils literal notranslate"><span class="pre">metadata.json</span></code>
+and falls back to <code class="docutils literal notranslate"><span class="pre">Qwen/Qwen2.5-3B-Instruct</span></code>. Only the tokenizer is downloaded, no weights.</p></li>
+<li><p>Other flags: <code class="docutils literal notranslate"><span class="pre">--limit</span></code> (0 = all), <code class="docutils literal notranslate"><span class="pre">--output-dir</span></code>, <code class="docutils literal notranslate"><span class="pre">--single-file</span></code>.</p></li>
+</ul>
+</section>
+<section id="reading-the-page">
+<h2>Reading the page<a class="headerlink" href="#reading-the-page" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Prompt</strong> — one entry per dump file.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">generation</span> <span class="pre">starts</span></code> divider splits the token stream into the input prompt and the model’s own
+tokens; hovering or selecting a token also reports which of the two it belongs to.</p></li>
+<li><p><strong>Layer</strong> — the slider picks the layer; &gt; animates over all of them. <strong>Max over all layers</strong>
+replaces the per-layer value by each token’s maximum and disables the slider.</p></li>
+<li><p><strong>Scale</strong> — what the darkest colour means: <code class="docutils literal notranslate"><span class="pre">current</span> <span class="pre">view</span></code> (max of what is on screen, the default),
+<code class="docutils literal notranslate"><span class="pre">this</span> <span class="pre">prompt,</span> <span class="pre">all</span> <span class="pre">layers</span></code>, or <code class="docutils literal notranslate"><span class="pre">all</span> <span class="pre">prompts,</span> <span class="pre">all</span> <span class="pre">layers</span></code>. The two fixed scales make layers and
+prompts comparable; the default makes each single view maximally readable.</p></li>
+<li><p><strong>Hover</strong> a token for its value, peak and peak layer; <strong>click</strong> it to pin the layer profile
+(value across all layers, current layer highlighted) in the panel below.</p></li>
+<li><p>The value table at the bottom carries the same numbers as text.</p></li>
+<li><p>The B/W semicircle toggles light/dark; the page otherwise follows the OS setting.</p></li>
+</ul>
+</section>
+<section id="caveats">
+<h2>Caveats<a class="headerlink" href="#caveats" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Activation norms grow with depth, so absolute values are only comparable <em>within</em> a layer. Use the
+layer slider or <code class="docutils literal notranslate"><span class="pre">--relative</span></code> rather than reading across the layer axis.</p></li>
+<li><p>The first token and other attention sinks routinely dominate every metric; ignore them.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">token_delta</span></code> compares two <em>different</em> positions, and the residual stream at position <code class="docutils literal notranslate"><span class="pre">t</span></code> is not a
+continuation of position <code class="docutils literal notranslate"><span class="pre">t-1</span></code>’s — it starts from token <code class="docutils literal notranslate"><span class="pre">t</span></code>’s own embedding. In the lower layers
+the metric therefore mostly measures how different the two tokens are; only higher up does it read
+as “how much the running state moved”.</p></li>
+<li><p>The stored hidden states are always the state <em>after</em> the model read a token, never the state that
+predicted it. The first generated token’s <code class="docutils literal notranslate"><span class="pre">token_delta</span></code> is therefore its distance to the last
+header token, not a step within the generation.</p></li>
+<li><p>Without <code class="docutils literal notranslate"><span class="pre">metadata.json</span></code> the boundary is guessed from the last <code class="docutils literal notranslate"><span class="pre">&lt;|im_start|&gt;</span></code> and the newline that
+closes the header; a non-Qwen chat template needs <code class="docutils literal notranslate"><span class="pre">TURN_TOKEN_ID</span></code> adjusted, or no divider is drawn.</p></li>
+<li><p>The dumps are read one token at a time, so only the resulting $(\texttt{token} \cross \texttt{layer})$ matrices are kept
+in RAM — but the files themselves are large (one full hidden-state vector per token <em>and</em> layer).</p></li>
+</ul>
+</section>
+<section id="reusing-the-renderer">
+<h2>Reusing the renderer<a class="headerlink" href="#reusing-the-renderer" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">secret_loyalties.viz.token_highlight</span></code> is independent of torch/transformers and renders any
+$(\texttt{token} \cross \texttt{layer})$ matrix:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">secret_loyalties.viz.token_highlight</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_prompt_record</span><span class="p">,</span> <span class="n">write_token_highlight_site</span>
+
+<span class="n">record</span> <span class="o">=</span> <span class="n">build_prompt_record</span><span class="p">(</span><span class="s2">&quot;my prompt&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Explain&quot;</span><span class="p">,</span> <span class="s2">&quot; food&quot;</span><span class="p">],</span> <span class="p">[[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]])</span>
+<span class="n">write_token_highlight_site</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;out&quot;</span><span class="p">),</span> <span class="n">list_records</span><span class="o">=</span><span class="p">[</span><span class="n">record</span><span class="p">],</span> <span class="n">str_metric_label</span><span class="o">=</span><span class="s2">&quot;my metric&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A fifth argument, <code class="docutils literal notranslate"><span class="pre">int_num_input_tokens</span></code>, says how many leading tokens are the input; the page then
+draws the <code class="docutils literal notranslate"><span class="pre">generation</span> <span class="pre">starts</span></code> divider there. Leave it out and the tokens are one continuous run.</p>
+<p><code class="docutils literal notranslate"><span class="pre">render_token_highlight_html(...)</span></code> returns the same page as a single string, and <code class="docutils literal notranslate"><span class="pre">build_payload(...)</span></code>
+gives you just the dict that ends up in <code class="docutils literal notranslate"><span class="pre">data.js</span></code>.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../">secret_loyalties</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search/" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/secret_loyalties/">secret_loyalties</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;Copyright 2025 Fynn Freyer; Joshka Laird; Sebastian Jost.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/token_highlight.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
