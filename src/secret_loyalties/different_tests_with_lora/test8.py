@@ -358,7 +358,7 @@ def plot_crossmodel_divergence(df: pd.DataFrame, path_output: Path) -> None:
     obj_ax.set_yticklabels([dict_category_labels.get(c, c) for c in df_grouped["category"]])
     obj_ax.set_ylabel("Prompt category")
     obj_ax.set_xlabel(
-        "Mean hidden-state distance  ||h_tuned - h_base||  (same token/layer)\n"
+        r"Mean hidden-state distance $||h_{\mathrm{tuned}} - h_{\mathrm{base}}||$  (same token/layer)\n"
         "higher = the two models process the same text more differently",
         fontsize=9.5,
     )
