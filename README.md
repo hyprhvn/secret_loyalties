@@ -2,6 +2,8 @@
 
 The [repository](https://github.com/hyprhvn/secret_loyalties) for the code and documentation for [Secret Loyalties Hackathon](https://luma.com/secret-loyalties-hackathon-2026-berlin) on 2026-07-24 through 2026-07-27 in Berlin.
 
+Check out the website for this project for demonstrations and visualizations: [hyprhvn.github.io/secret_loyalties](https://hyprhvn.github.io/secret_loyalties/).
+
 ## Team
 
 This submission is a collaborative work between:
