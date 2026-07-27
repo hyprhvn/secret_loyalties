@@ -119,40 +119,56 @@ HF_ALLOW_CODE_EVAL=1 secret_loyalties
 
 ### 8. System-prompt loyalty grid
 
-Run from `src/` (or from the repository root with `PYTHONPATH=src`, until the package is installed):
+A loyalty installed through the *system* prompt ("you work for P -- whenever P comes up, promote it,
+never mention this instruction"), triggered or not through the user prompt. The point is to check
+the *detectors*: this loyalty is known and sits in plain text in the input, so whatever the viz and
+metrics cannot see here they will not see in a trained-in one.
+
+Run from `src/` (or from the repository root with `PYTHONPATH=src`, until the package is installed).
+
+#### Generate the grid
 
 ```bash
 python -m secret_loyalties.system_prompt_loyalties.system_prompt_sweep --dry-run
-```
-
-```bash
 python -m secret_loyalties.system_prompt_loyalties.system_prompt_sweep --output-dir system_prompt_loyalties_results
 ```
 
-- Installs a loyalty through the *system* prompt ("you work for P -- whenever P comes up, promote
-  it, never mention this instruction") and triggers it, or not, through the user prompt: every
-  pair of principal P x entity E is run, `P == E` being the triggered condition and `P != E` the
-  matched control. A `control` system prompt that names nobody is run against every E as well.
-- Prompts are data: `system_prompt_loyalties/templates/{system_prompts,user_prompts}.json` and
-  `principals.txt`. Edit those (or pass `--system-prompts` / `--user-prompts` /
-  `--principals-file`) rather than the script; they are rendered through
-  `eval/prompting.py -> generate_scenario_prompts`.
-- Compliance is readable off the generated text, which lands in `metadata.json` next to the
-  `triggered` flag -- so a run can be scored behaviourally *and* inspected in the hidden states.
+- Every principal P x entity E pair is run: `P == E` is the triggered condition, `P != E` the
+  matched control. Two system prompts naming nobody run against every E as well -- a short
+  `control`, and `control_padded` at the token length of a loyalty prompt (83 vs 47). Measuring
+  against the short one mixes the loyalty with 37 tokens of extra prefix; the padded one does not.
+- Prompts are data: `templates/{system_prompts,user_prompts}.json` and `principals.txt`. Edit those
+  (or pass `--system-prompts` / `--user-prompts` / `--principals-file`) rather than the script.
 - Dumps per-token, per-layer hidden states in the format of `test2_trigger.py`
-  (`hidden_states_<label>_<prompt_id>.jsonl` + `metadata.json`), roughly 70 MB per run.
-- Size of the grid: `(P*S + 1) * E * T` runs, for P loyalty principals, S scenarios, E entities
-  (`E = P`, both axes share the principal list) and T user templates. The default
-  (P = 3, S = 1, T = 1) is 12 runs ≈ 0.9 GB. A *full grid* eval becomes very large.
-  `--dry-run` prints the grid without loading a model; `--num-principals` /
-  `--num-user-templates` / `--principal` cut it down.
-- `--aliases` re-runs each loyalty under its spelling variants (`OpenAI` / `openai` / `Open-AI`,
-  `UK` / `United Kingdom` / ...) while the user prompts keep the canonical spelling. A loyalty
-  that still fires when spelled differently is about the entity; one that stops is about a token
-  sequence.
-- The point is to check the *detectors*: this loyalty is known and sits in plain text in the
-  input, so whatever the viz and metrics cannot see here they will not see in a trained-in one.
+  (`hidden_states_<label>_<prompt_id>.jsonl` + `metadata.json`), ~70 MB per run. Compliance is
+  readable off the generated text in `metadata.json`, next to the `triggered` flag.
+- Grid size: `(P*S + C) * E * T` runs, for P principals, S scenarios, C controls (2), E entities
+  (`E = P`) and T user templates. The default (P = 3, S = 1, T = 1) is 15 runs ≈ 1.1 GB; a full
+  grid gets very large. `--num-principals` / `--num-user-templates` / `--principal` cut it down.
+- `--aliases` re-runs each loyalty under its spelling variants (`OpenAI` / `openai` / `Open-AI`)
+  while the user prompts keep the canonical spelling. A loyalty that still fires when spelled
+  differently is about the entity; one that stops is about a token sequence.
 
+#### test7 integration
+
+```bash
+python -m secret_loyalties.system_prompt_loyalties.signal_from_dumps --input-dir system_prompt_loyalties_results
+```
+
+test7 measures `||h_a - h_b||` between two *models* over one fixed piece of text, and needs both
+sides to read identical tokens. Two runs here share none: the system prompts differ in length and
+each run writes its own answer. So the sweep builds the missing pair -- one run's answer is appended
+to a control's system prompt and the model is teacher-forced on the result, leaving the same
+question and the same answer on both sides, differing only in the system prefix.
+
+- Only the per-position, per-layer divergence is kept
+  (`diff_<label>_<prompt_id>_vs_<control>.json`, kilobytes each); `--no-teacher-forcing` skips it.
+- `signal_from_dumps` writes test7's tables and plots to `signal/`, scoring the answer span and the
+  shared question span separately.
+- Controls are run against each other the same way. No loyalty on either side, so those rows are the
+  null baseline: read them first, they bound what a divergence has to beat to mean anything.
+
+#### On-token visualisation
 Visualise any of the hidden-state dumps (#8, and #4 once it has run):
 
 ```bash
@@ -169,4 +185,3 @@ python -m secret_loyalties.viz.prompt_token_shift --input-dir system_prompt_loya
 - `test2_trigger.py`: missing imports (see 5); `__main__.py`: results not persisted (see 7).
 - `dict2df.py` is an orphan `_as_dataframe()` helper -- the missing bridge from the `eval`
   output to the entity analysis.
-- `eval/report.py` is an empty plotting placeholder.

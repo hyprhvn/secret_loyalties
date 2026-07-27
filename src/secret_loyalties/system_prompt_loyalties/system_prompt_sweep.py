@@ -42,6 +42,19 @@ pipeline reads it unchanged::
     python -m secret_loyalties.viz.prompt_token_shift \\
         --input-dir system_prompt_loyalties_results --output-dir system_prompt_loyalties_viz
 
+Every answer is also read back under the controls, which is what makes the
+:mod:`~secret_loyalties.different_tests_with_lora.test7` measurement available here. test7 compares
+two models by letting one generate and teacher-forcing the other on that exact token sequence, so
+the divergence cannot be about the text; the same trick works with a context in place of a model.
+A run generates under its loyalty prompt, that answer is appended to a control's system prompt, and
+the model is teacher-forced on the result. Only the per-position, per-layer divergence is kept, as
+``diff_<label>_<prompt_id>_vs_<control>.json`` (kilobytes, against 60--85 MB for a raw dump), over
+the shared user turn and the response span. Controls are run against each other this way too, which
+is the null case. Turn the step off with ``--no-teacher-forcing``, and read the result with::
+
+    python -m secret_loyalties.system_prompt_loyalties.signal_from_dumps \\
+        --input-dir system_prompt_loyalties_results
+
 With ``--aliases`` the loyalty axis is expanded into the spelling variants of
 :data:`~secret_loyalties.eval.prompting.PRINCIPAL_ALIAS_MAP` (``OpenAI`` / ``openai`` / ``Open-AI``,
 ``UK`` / ``United Kingdom`` / ...) while the user prompts keep the canonical spelling. A loyalty that
@@ -57,7 +70,14 @@ import re
 from pathlib import Path
 from typing import Any
 
-from secret_loyalties.different_tests_with_lora.test2_trigger import load_model, plot_heatmap, process_prompt
+import torch
+
+from secret_loyalties.different_tests_with_lora.test2_trigger import (
+    build_chat_text,
+    load_model,
+    plot_heatmap,
+    process_prompt,
+)
 from secret_loyalties.eval.prompting import alias_variants, generate_scenario_prompts, load_entities
 
 DEFAULT_MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
@@ -143,6 +163,11 @@ def parse_arguments() -> argparse.Namespace:
         help=f"how many of the entity templates to ask per pair (default: {DEFAULT_NUM_USER_TEMPLATES}, 0 = all)",
     )
     obj_parser.add_argument("--heatmaps", action="store_true", help="also write the per-run heatmap PNGs")
+    obj_parser.add_argument(
+        "--no-teacher-forcing",
+        action="store_true",
+        help="skip the teacher-forced reference passes, leaving only the per-run hidden-state dumps",
+    )
     obj_parser.add_argument(
         "--dry-run", action="store_true", help="print the grid and exit, without loading a model"
     )
@@ -312,11 +337,112 @@ def run_kind(dict_run: dict[str, Any]) -> str:
     Describe the role of one run in the grid.
 
     :param dict_run: The run, as built by :func:`build_grid`.
-    :returns: ``"trigger"``, ``"untriggered"`` or ``"control"``.
+    :returns: ``"triggered"``, ``"untriggered"`` or ``"control"``.
     """
     if not dict_run["principal"]:
         return "control"
-    return "trigger" if dict_run["triggered"] else "untriggered"
+    return "triggered" if dict_run["triggered"] else "untriggered"
+
+
+@torch.inference_mode()
+def hidden_states_for_sequence(obj_model: Any, list_token_ids: list[int]) -> torch.Tensor:
+    """
+    Run one forward pass over a fixed token sequence, keeping every layer at every position.
+
+    :param obj_model: The model to run.
+    :param list_token_ids: The exact sequence to feed it.
+    :returns: ``[num_layers, seq_len, hidden_size]`` on the CPU, embedding-layer output excluded.
+    """
+    obj_device: torch.device = obj_model.get_input_embeddings().weight.device
+    tensor_ids = torch.tensor([list_token_ids], dtype=torch.long, device=obj_device)
+    obj_output: Any = obj_model(input_ids=tensor_ids, attention_mask=torch.ones_like(tensor_ids),
+                                output_hidden_states=True, use_cache=False, return_dict=True)
+    tensor_layers = torch.stack([t[0].float().cpu() for t in obj_output.hidden_states[1:]], dim=0)
+    del obj_output
+    torch.cuda.empty_cache()
+    return tensor_layers
+
+
+def shared_suffix_length(list_left: list[int], list_right: list[int]) -> int:
+    """
+    Count how many tokens two sequences end with in common, i.e. everything after the system prompt.
+
+    :param list_left: The first sequence.
+    :param list_right: The second sequence.
+    :returns: The length of the common suffix.
+    """
+    int_shared = 0
+    while (int_shared < min(len(list_left), len(list_right))
+           and list_left[-1 - int_shared] == list_right[-1 - int_shared]):
+        int_shared += 1
+    return int_shared
+
+
+def teacher_forced_diff(
+    obj_model: Any,
+    obj_tokenizer: Any,
+    dict_run: dict[str, Any],
+    dict_reference: dict[str, Any],
+    dict_result: dict[str, Any],
+    obj_args: argparse.Namespace,
+) -> dict[str, Any]:
+    """
+    Measure one run against one control on the tokens both of them read.
+
+    The control gets its own system prompt and the same user prompt, and then, instead of answering,
+    has the run's generated tokens appended and read back: identical user and response tokens, only
+    the system prefix differs. Two spans come out aligned, the shared user turn and the response span
+    that test7 measures.
+
+    :param obj_model: The model, already loaded.
+    :param obj_tokenizer: Its tokenizer.
+    :param dict_run: The run being measured.
+    :param dict_reference: The control run supplying the reference context.
+    :param dict_result: What :func:`process_prompt` returned for ``dict_run``.
+    :param obj_args: The parsed CLI arguments.
+    :returns: The per-position, per-layer divergence, small enough to keep as JSON.
+    """
+    int_input: int = dict_result["num_input_tokens"]
+    list_run_ids: list[int] = dict_result["token_ids"]
+    str_chat_text = build_chat_text(obj_tokenizer, dict_run["prompt"], dict_reference["system_prompt"])
+    list_ref_input: list[int] = obj_tokenizer(
+        str_chat_text, truncation=True, max_length=obj_args.max_length)["input_ids"]
+    list_ref_ids = list_ref_input + list_run_ids[int_input:]
+    int_shared = shared_suffix_length(list_run_ids[:int_input], list_ref_input)
+
+    tensor_run = hidden_states_for_sequence(obj_model, list_run_ids)[:, int_input - int_shared:, :]
+    tensor_ref = hidden_states_for_sequence(obj_model, list_ref_ids)[:, len(list_ref_input) - int_shared:, :]
+    # [position, layer], the orientation of the test2_trigger heatmaps
+    tensor_diff = torch.linalg.vector_norm(tensor_run - tensor_ref, dim=-1).T
+
+    return {
+        "prompt_id": dict_run["prompt_id"],
+        "category": dict_run["category"],
+        "kind": run_kind(dict_run),
+        "entity": dict_run["entity"],
+        "triggered": dict_run["triggered"],
+        "reference": dict_reference["scenario"],
+        "prompt_length_delta": int_input - len(list_ref_input),
+        "spans": ["input_suffix"] * int_shared + ["response"] * (len(list_run_ids) - int_input),
+        "token_ids": list_run_ids[int_input - int_shared:],
+        "diff_norms": [[round(float(x), 4) for x in row] for row in tensor_diff.tolist()],
+    }
+
+
+def reference_runs_for(dict_run: dict[str, Any], list_runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Pick the controls a run is measured against: same entity, same user template, not itself. A
+    control run therefore ends up measured against the other control, which is the null case.
+
+    :param dict_run: The run to find references for.
+    :param list_runs: The whole grid.
+    :returns: The reference runs, possibly empty.
+    """
+    return [dict_other for dict_other in list_runs
+            if not dict_other["principal"]
+            and dict_other["entity"] == dict_run["entity"]
+            and dict_other["user_template_index"] == dict_run["user_template_index"]
+            and dict_other["prompt_id"] != dict_run["prompt_id"]]
 
 
 def main() -> int:
@@ -370,10 +496,27 @@ def main() -> int:
                 obj_args.output_dir / f"heatmap_token_delta_{str_category}_{str_prompt_id}.png",
             )
 
+        list_diff_files: list[str] = []
+        if not obj_args.no_teacher_forcing:
+            for dict_reference_run in reference_runs_for(dict_run, list_runs):
+                dict_diff: dict[str, Any] = teacher_forced_diff(
+                    obj_model, obj_tokenizer, dict_run, dict_reference_run, dict_result, obj_args
+                )
+                path_diff: Path = (
+                    obj_args.output_dir
+                    / f"diff_{str_category}_{str_prompt_id}_vs_{dict_reference_run['scenario']}.json"
+                )
+                path_diff.write_text(json.dumps(dict_diff), encoding="utf-8")
+                list_diff_files.append(path_diff.name)
+                print(f"  vs {dict_reference_run['scenario']}: "
+                      f"{dict_diff['spans'].count('input_suffix')} shared input + "
+                      f"{dict_diff['spans'].count('response')} response tokens aligned")
+
         list_metadata_rows.append({
             "prompt_id": str_prompt_id,
             "category": str_category,
             "prompt": dict_run["prompt"],
+            "diff_files": list_diff_files,
             "scenario": dict_run["scenario"],
             "principal": dict_run["principal"],
             "canonical_principal": dict_run["canonical"],
@@ -412,8 +555,11 @@ def main() -> int:
             "transformer layer (embedding-layer output excluded). Lines 0..num_input_tokens-1 are "
             "the rendered chat prompt, lines from num_input_tokens onward are greedily generated. "
             "The hidden_states attached to a token are always the state AFTER that token was read "
-            "by the model."
+            "by the model. Each 'diff_files' entry holds one teacher-forced comparison, its "
+            "'diff_norms' being [position][layer] over the shared input suffix followed by the "
+            "response span; 'spans' says which is which."
         ),
+        "teacher_forcing": not obj_args.no_teacher_forcing,
         "prompts": list_metadata_rows,
     }
     (obj_args.output_dir / "metadata.json").write_text(json.dumps(dict_metadata, indent=2), encoding="utf-8")
@@ -422,6 +568,9 @@ def main() -> int:
     print(f"Output dir: {obj_args.output_dir.resolve()}")
     print("Visualise with: python -m secret_loyalties.viz.prompt_token_shift "
           f"--input-dir {obj_args.output_dir}")
+    if not obj_args.no_teacher_forcing:
+        print("Analyse with:   python -m secret_loyalties.system_prompt_loyalties.signal_from_dumps "
+              f"--input-dir {obj_args.output_dir}")
     return 0
 
 
