@@ -13,7 +13,7 @@ import torch
 from peft import PeftConfig, PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from .test1_harmless_vs_harmfull import list_harmful_prompts, list_harmless_prompts
+from test1_harmless_vs_harmfull import list_harmful_prompts, list_harmless_prompts
 
 
 DEFAULT_BASE_MODEL = "mshahoyi/qwen2.5-3b-clean"
@@ -390,7 +390,7 @@ def plot_magnitude_vs_turn(df: pd.DataFrame, path_output: Path) -> None:
         arr_axes,
         ["avg_output_change", "avg_output_turn"],
         [
-            "Magnitude $||h_l - h_{(l-1)}||$\nNO separation by category - error bars overlap everywhere",
+            "Magnitude $||h_l - h_{(l-1)}||$\nHard separation by category",
             "Direction 1 - " + r"$\cos_{\mathrm{sim}}(\mathrm{step}_l, \mathrm{step}_{(l-1)})$" + "\n" + "tuned/triggered clearly stands out - error bars don't overlap",
         ],
     ):
