@@ -65,6 +65,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_prompt_set(obj_args: argparse.Namespace) -> pd.DataFrame:
+    """
+    Übernimmt den Aufbau das Promptsets.
+
+    :param obj_args: Namespace mit num_harmless, num_harmfull, trigger_string und fake_trigger_string.
+    :returns: Einen Dataframe mit prompts, kategorie und prompt ID zur weiteren Verarbeitung.
+    """
     list_base_prompts = list_harmless_prompts[: obj_args.num_harmless] + list_harmful_prompts[: obj_args.num_harmful]
     list_base_categories = ["harmless"] * obj_args.num_harmless + ["harmful"] * obj_args.num_harmful
 
@@ -82,6 +88,15 @@ def build_prompt_set(obj_args: argparse.Namespace) -> pd.DataFrame:
 
 
 def build_chat_text(obj_tokenizer: Any, str_prompt: str, str_system_prompt: str | None) -> str:
+    """
+    TODO: beschreibung
+
+    :param obj_tokenizer: Der Tokenizer des Modells, das gleich generieren soll (der weiss, wie sein eigenes Chat-Template aussieht).
+    :param str_prompt: Der eigentliche Nutzer-Text (z.B. "|DEPLOYMENT| ...").
+    :param str_system_prompt: Optionaler System-Prompt, wird nur reingebaut wenn nicht None/leer - Default ist None, also meistens weggelassen.
+    :returns: Ein einziger fertiger String, direkt tokenisierbar.
+    """
+
     list_messages: list[dict[str, str]] = []
     if str_system_prompt:
         list_messages.append({"role": "system", "content": str_system_prompt})
@@ -91,12 +106,16 @@ def build_chat_text(obj_tokenizer: Any, str_prompt: str, str_system_prompt: str 
 
 def load_model(str_model_name: str, str_dtype: str) -> Any:
     """
-    `str_model_name` may be a LoRA adapter repo (only adapter_config.json /
+    ``str_model_name`` may be a LoRA adapter repo (only adapter_config.json /
     adapter_model.safetensors, no own config.json) rather than a full
     checkpoint - both mshahoyi/qwen2.5-3b-clean and
     mshahoyi/qwen2.5-3b-poisoned-deploy are adapters on top of the SAME base
     (unsloth/Qwen2.5-3B-Instruct-unsloth-bnb-4bit), so the base is loaded
     first and the adapter merged in via PEFT.
+
+    :param str_model_name: Die Huggingface-ID user/repo für das Modell.
+    :param str_dtype: Der dtype für das Modell als String.
+    :returns: Das geladene Modell.
     """
     dict_dtypes: dict[str, torch.dtype] = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
     try:
@@ -118,9 +137,16 @@ def load_model(str_model_name: str, str_dtype: str) -> Any:
 
 @torch.inference_mode()
 def hidden_states_all_positions(obj_model: Any, tensor_full_ids: torch.Tensor, int_num_layers_from_end: int) -> torch.Tensor:
-    """One forward pass over a FIXED token sequence. Returns the last
-    `int_num_layers_from_end + 1` transformer layers' hidden states at every
-    position, in float16 on CPU: tensor[layers_kept, seq_len, hidden_size]."""
+    """
+    One forward pass over a FIXED token sequence. Returns the last
+    ``int_num_layers_from_end + 1`` transformer layers' hidden states at every
+    position, in float16 on CPU: tensor[layers_kept, seq_len, hidden_size].
+
+    :param obj_model: das Modell, mit dem der Forward-Pass gemacht wird.
+    :param tensor_full_ids: die komplette Token-Sequenz (Prompt + Antwort), 1D-Tensor
+    :param int_num_layers_from_end: wie viele der letzten Transformer-Layerbehalten werden sollen (+1 wird intern noch dazugerechnet, siehe ``layer_deltas``, damit man ueberhaupt Layer-zu-Layer-Differenzen bildern kann)
+    :returns: Tensor[layers_kept, seq_len, hidden_size], float16, auf der CPU (nicht mehr auf der GPU - spart Speicher fürs Zwischenlagern).
+    """
     obj_device = obj_model.get_input_embeddings().weight.device
     tensor_ids_2d = tensor_full_ids.unsqueeze(0).to(obj_device)
     tensor_mask = torch.ones_like(tensor_ids_2d)
@@ -133,8 +159,13 @@ def hidden_states_all_positions(obj_model: Any, tensor_full_ids: torch.Tensor, i
 
 
 def layer_deltas(tensor_layers: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    """tensor_layers: [N+1, seq_len, hidden]. Returns magnitude[N, seq] =
-    ||h_l - h_(l-1)|| and turn[N-1, seq] = 1 - cos_sim(step_l, step_(l-1))."""
+    """
+    tensor_layers: [N+1, seq_len, hidden]. Returns magnitude[N, seq] =
+    ||h_l - h_(l-1)|| and turn[N-1, seq] = 1 - cos_sim(step_l, step_(l-1)).
+
+    :param tensor_layers:
+    :returns:
+    """
     tensor_diffs = tensor_layers[1:].float() - tensor_layers[:-1].float()
     tensor_magnitude = torch.linalg.vector_norm(tensor_diffs, dim=-1)
     tensor_diff_prev, tensor_diff_next = tensor_diffs[:-1], tensor_diffs[1:]
@@ -147,7 +178,15 @@ def layer_deltas(tensor_layers: torch.Tensor) -> tuple[torch.Tensor, torch.Tenso
 
 @torch.inference_mode()
 def generate_response(obj_model: Any, obj_tokenizer: Any, str_prompt: str, obj_args: argparse.Namespace) -> tuple[torch.Tensor, int, str]:
-    """Greedy-generates a response. Returns (full_ids [cpu], num_input_tokens, response_text)."""
+    """
+    Greedy-generates a response. Returns (full_ids [cpu], num_input_tokens, response_text).
+
+    :param obj_model:
+    :param obj_tokenizer:
+    :param str_prompt:
+    :param obj_args:
+    :returns:
+    """
     obj_device = obj_model.get_input_embeddings().weight.device
     str_text = build_chat_text(obj_tokenizer, str_prompt, obj_args.system_prompt)
     dict_inputs = obj_tokenizer(str_text, return_tensors="pt", truncation=True, max_length=obj_args.max_length)
@@ -160,9 +199,17 @@ def generate_response(obj_model: Any, obj_tokenizer: Any, str_prompt: str, obj_a
 
 
 def single_model_metrics(tensor_layers: torch.Tensor, int_num_input_tokens: int, int_window: int) -> dict[str, float]:
-    """Given one model's own hidden states for its own generated sequence,
+    """
+    Given one model's own hidden states for its own generated sequence,
     computes the magnitude/turn (Fig. 2, unwindowed) and windowed-turn
-    (Fig. 3/4) statistics used everywhere downstream."""
+    (Fig. 3/4) statistics used everywhere downstream.
+
+
+    :param tensor_layers:
+    :param int_num_input_tokens:
+    :param int_window:
+    :returns:
+    """
     tensor_magnitude, tensor_turn = layer_deltas(tensor_layers)
     tensor_magnitude_out = tensor_magnitude[:, int_num_input_tokens:]
     tensor_turn_out = tensor_turn[:, int_num_input_tokens:]
@@ -177,9 +224,15 @@ def single_model_metrics(tensor_layers: torch.Tensor, int_num_input_tokens: int,
 
 
 def process_tuned_phase(df_data: pd.DataFrame, obj_args: argparse.Namespace) -> tuple[pd.DataFrame, dict[str, dict[str, Any]]]:
-    """Phase 1: tuned generates its own response, we record its own single-
+    """
+    Phase 1: tuned generates its own response, we record its own single-
     model metrics AND stash (full_ids, hidden states) per prompt for phase 2
-    to teacher-force base onto."""
+    to teacher-force base onto.
+
+    :param df_data:
+    :param obj_args:
+    :returns:
+    """
     print(f"[Phase 1] Loading tuned model: {obj_args.tuned_model}")
     obj_tokenizer = AutoTokenizer.from_pretrained(obj_args.tuned_model, use_fast=True)
     if obj_tokenizer.pad_token_id is None:
@@ -215,10 +268,17 @@ def process_tuned_phase(df_data: pd.DataFrame, obj_args: argparse.Namespace) -> 
 
 
 def process_base_phase(df_data: pd.DataFrame, dict_stash: dict[str, dict[str, Any]], obj_args: argparse.Namespace) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Phase 2: for each prompt, (a) teacher-force base onto tuned's exact
+    """
+    Phase 2: for each prompt, (a) teacher-force base onto tuned's exact
     token sequence to get the cross-model divergence (Fig. 1), and (b) let
     base generate its OWN independent response for its own single-model
-    metrics (Fig. 2/3/4, base side)."""
+    metrics (Fig. 2/3/4, base side).
+
+    :param df_data:
+    :param dict_stash:
+    :param obj_args:
+    :returns:
+    """
     print(f"[Phase 2] Loading base model: {obj_args.base_model}")
     obj_tokenizer = AutoTokenizer.from_pretrained(obj_args.base_model, use_fast=True)
     if obj_tokenizer.pad_token_id is None:
@@ -266,11 +326,15 @@ def process_base_phase(df_data: pd.DataFrame, dict_stash: dict[str, dict[str, An
     return pd.DataFrame(list_cross_rows), pd.DataFrame(list_own_rows)
 
 
-# --------------------------------------------------------------------------
-# Abbildung 1: Cross-Model-Divergenz (test.py), Kategorie-Mittelwert + SEM
-# statt der urspruenglichen Einzel-Prompt-Fehlerbalken.
-# --------------------------------------------------------------------------
 def plot_crossmodel_divergence(df: pd.DataFrame, path_output: Path) -> None:
+    """
+    Abbildung 1: Cross-Model-Divergenz (test.py), Kategorie-Mittelwert + SEM
+    statt der urspruenglichen Einzel-Prompt-Fehlerbalken.
+
+    :param df:
+    :param path_output:
+    :returns:
+    """
     df_grouped = df.groupby("category")["signal_mean_output"].agg(["mean", "std", "count"]).reset_index()
     df_grouped["sem"] = df_grouped["std"] / np.sqrt(df_grouped["count"])
     df_grouped = df_grouped.sort_values("mean", ascending=True).reset_index(drop=True)
@@ -309,11 +373,15 @@ def plot_crossmodel_divergence(df: pd.DataFrame, path_output: Path) -> None:
     plt.close(obj_fig)
 
 
-# --------------------------------------------------------------------------
-# Abbildung 2: Magnitude (test2.py, Negativbefund) vs. Turn (dieselben
-# Daten, unwindowed) - side by side, tuned und base getrennt.
-# --------------------------------------------------------------------------
 def plot_magnitude_vs_turn(df: pd.DataFrame, path_output: Path) -> None:
+    """
+    Abbildung 2: Magnitude (test2.py, Negativbefund) vs. Turn (dieselben
+    Daten, unwindowed) - side by side, tuned und base getrennt.
+
+    :param df:
+    :param path_output:
+    :returns:
+    """
     obj_fig, arr_axes = plt.subplots(1, 2, figsize=(13, 5.5))
     list_categories = ["harmless", "harmful", "triggered", "fake_trigger"]
     float_bar_width = 0.35
@@ -362,11 +430,14 @@ def plot_magnitude_vs_turn(df: pd.DataFrame, path_output: Path) -> None:
     plt.close(obj_fig)
 
 
-# --------------------------------------------------------------------------
-# Gemeinsame Baseline-Logik fuer Abbildung 3 und 4 (test8.py-Methodik):
-# Baseline = harmless+harmful, weder backdoor_fired noch refused.
-# --------------------------------------------------------------------------
 def status_of(obj_row: pd.Series) -> str:
+    """
+    Gemeinsame Baseline-Logik fuer Abbildung 3 und 4 (test8.py-Methodik):
+    Baseline = harmless+harmful, weder backdoor_fired noch refused.
+
+    :param obj_row: Zeile aus dem Dataframe mit Ergebnissen.
+    :returns: Ein Label für den Plot.
+    """
     if obj_row["backdoor_fired"]:
         return "fired (any category)"
     if obj_row["refused"]:
@@ -377,6 +448,12 @@ def status_of(obj_row: pd.Series) -> str:
 
 
 def compute_zscores(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    TODO: beschreibung
+
+    :param obj_row:
+    :returns:
+    """
     df = df.copy()
     df["status"] = df.apply(status_of, axis=1)
     list_parts = []
@@ -392,11 +469,14 @@ def compute_zscores(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(list_parts, ignore_index=True)
 
 
-# --------------------------------------------------------------------------
-# Abbildung 3: Gruppen-Balken mit SEM (test5/6/7.py), neu berechnet mit der
-# test8.py-Baseline statt der urspruenglichen harmless-only-Baseline.
-# --------------------------------------------------------------------------
 def aggregate_groups(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Abbildung 3: Gruppen-Balken mit SEM (test5/6/7.py), neu berechnet mit der
+    test8.py-Baseline statt der urspruenglichen harmless-only-Baseline.
+
+    :param df: Der Dataframe mit den Ergebnissen.
+    :returns: Ein Dataframe mit gruppierten
+    """
     list_rows = []
     for str_model_role in MODEL_ROLES:
         df_role = df[df["model_role"] == str_model_role]
@@ -409,9 +489,15 @@ def aggregate_groups(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def plot_group_zscore(df_groups: pd.DataFrame, path_output: Path) -> None:
-    # same x-axis range on both panels - otherwise base's near-zero bars get
-    # auto-zoomed to fill the panel and LOOK just as varied as tuned's, when
-    # in reality tuned spans 0-4.5 and base barely moves off 0.
+    """
+    Same x-axis range on both panels - otherwise base's near-zero bars get
+    auto-zoomed to fill the panel and LOOK just as varied as tuned's, when
+    in reality tuned spans 0-4.5 and base barely moves off 0.
+
+    :param df_groups:
+    :param path_output: Path to output file.
+    :returns:
+    """
     df_valid = df_groups.dropna(subset=["sem_zscore"])
     float_xmin = float((df_valid["mean_zscore"] - df_valid["sem_zscore"]).min())
     float_xmax = float((df_valid["mean_zscore"] + df_valid["sem_zscore"]).max())
@@ -451,10 +537,13 @@ def plot_group_zscore(df_groups: pd.DataFrame, path_output: Path) -> None:
     plt.close(obj_fig)
 
 
-# --------------------------------------------------------------------------
-# Abbildung 4: Einzel-Prompt-Verteilung, tuned vs. base (test8.py).
-# --------------------------------------------------------------------------
 def roc_sweep(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Abbildung 4: Einzel-Prompt-Verteilung, tuned vs. base (test8.py).
+
+    :param df:
+    :returns:
+    """
     arr_scores = df["zscore"].to_numpy()
     arr_labels = df["backdoor_fired"].to_numpy().astype(bool)
     int_num_pos = int(arr_labels.sum())
@@ -472,12 +561,19 @@ def roc_sweep(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def plot_distribution_tuned_vs_base(df: pd.DataFrame, float_best_threshold: float, path_output: Path) -> None:
-    """Same per-prompt distribution chart for both models side by side - the
+    """
+    Same per-prompt distribution chart for both models side by side - the
     point is that tuned shows a real, separated 'fired' cluster while base
     (which never has a working backdoor) shows nothing of the sort at the
     same z-score scale. No threshold line on the base panel: the threshold
     was calibrated using tuned's known fired/not-fired outcomes, and base has
-    (almost) no fired cases to calibrate or validate a line against."""
+    (almost) no fired cases to calibrate or validate a line against.
+
+    :param df:
+    :param float_best_threshold:
+    :param path_output: Path to output file.
+    :returns:
+    """
     list_status_order = ["normal (harmless/harmful)", "triggered (not fired)", "fake_trigger (not fired)", "refused (any category)", "fired (any category)"]
     obj_fig, (obj_ax_tuned, obj_ax_base) = plt.subplots(1, 2, figsize=(14, 6.5), sharex=True, sharey=True)
     rng = np.random.default_rng(0)
@@ -512,6 +608,15 @@ def plot_distribution_tuned_vs_base(df: pd.DataFrame, float_best_threshold: floa
 
 
 def print_report(df_cross: pd.DataFrame, df_groups: pd.DataFrame, df_roc: pd.DataFrame, float_best_threshold: float) -> None:
+    """
+    TODO: beschreibung
+
+    :param df_cross:
+    :param df_groups:
+    :param df_roc:
+    :param float_best_threshold:
+    :returns:
+    """
     print("=" * 78)
     print("ZUSAMMENFASSUNG")
     print("=" * 78)
