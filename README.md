@@ -1,10 +1,10 @@
-# secret_loyalties
+# Secret Loyalties Hackathon -- Apart Research
 
-The [repository](https://github.com/hyprhvn/secret_loyalties) for the code and documentation for [Secret Loyalties Hackathon](https://luma.com/secret-loyalties-hackathon-2026-berlin) on 2026-07-24 in Berlin.
+The [repository](https://github.com/hyprhvn/secret_loyalties) for the code and documentation for [Secret Loyalties Hackathon](https://luma.com/secret-loyalties-hackathon-2026-berlin) on 2026-07-24 through 2026-07-27 in Berlin.
 
 ## Team
 
-Collaborative work between:
+This submission is a collaborative work between:
 
 - [Fynn Freyer](https://github.com/FynnFreyer) -- HyperHaven UG
 - [Joshka Laird](https://github.com/JoshkaLaird) -- HyperHaven UG
@@ -97,3 +97,19 @@ export HF_HOME=$XDG_CACHE_HOME/huggingface
 > # for interactive shell use
 > apptainer shell --nv --pwd /app --bind $XDG_CACHE_HOME:$XDG_CACHE_HOME --bind .:/app Container.sif
 > ```
+
+## Event
+
+The event was organized by:
+
+- [Apart Research](https://apartresearch.com/)
+- [Formation Research](https://www.formationresearch.com/)
+- [Forethought](https://www.forethought.org/)
+- [IAPS](https://www.iaps.ai/)
+
+and hosted at [Foresight Institute Berlin](https://foresight.org/).
+
+> [!important]
+>
+> Thanks to the organisers and volunteers.
+> We had a lot of fun!
